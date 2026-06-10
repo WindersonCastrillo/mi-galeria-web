@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo Anime - Temporada y Calendario</title>
+    <!-- Enlazamos nuestro CSS -->
+    <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+
+    <header>
+        <h1>Catálogo de Anime</h1>
+        
+        <!-- Pestañas principales -->
+        <nav aria-label="Navegación principal">
+            <button id="btn-temporada" class="activo">Temporada de Otoño</button>
+            <button id="btn-calendario">Calendario Semanal</button>
+        </nav>
+
+        <!-- Buscador accesible -->
+        <div class="buscador">
+            <label for="buscar">Buscar Anime:</label>
+            <input id="buscar" type="text" placeholder="Ej. Re:Zero, Jujutsu Kaisen...">
+        </div>
+    </header>
+
+    <main>
+        <!-- Botón requerido por la guía -->
+        <button id="cargar">Cargar datos</button>
+
+        <!-- Submenú de días (Se ocultará/mostrará con JS después) -->
+        <nav id="menu-dias" style="display: none;" aria-label="Días de la semana">
+            <button>Lunes</button>
+            <button>Martes</button>
+            <button>Miércoles</button>
+            <button>Jueves</button>
+            <button>Viernes</button>
+            <button>Sábado</button>
+            <button>Domingo</button>
+        </nav>
+
+        <!-- Contenedor principal donde inyectaremos las tarjetas -->
+        <section id="galeria" aria-label="Galería de animes">
+            <!-- Las tarjetas dinámicas irán aquí -->
+        </section>
+    </main>
+
+    <footer>
+        <p>Hecho por Kirito</p>
+    </footer>
+
+    <!-- Enlazamos nuestro JavaScript -->
+    <script src="js/app.js"></script>
+</body>
+</html>
