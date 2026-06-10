@@ -3,54 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catálogo Anime - Temporada y Calendario</title>
-    <!-- Enlazamos nuestro CSS -->
+    <title>AnimeV2 - Catálogo y Horarios</title>
     <link rel="stylesheet" href="css/estilos.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <header>
-        <h1>Catálogo de Anime</h1>
-        
-        <!-- Pestañas principales -->
-        <nav aria-label="Navegación principal">
-            <button id="btn-temporada" class="activo">Temporada de Otoño</button>
-            <button id="btn-calendario">Calendario Semanal</button>
-        </nav>
-
-        <!-- Buscador accesible -->
-        <div class="buscador">
-            <label for="buscar">Buscar Anime:</label>
-            <input id="buscar" type="text" placeholder="Ej. Re:Zero, Jujutsu Kaisen...">
+    <header class="navbar">
+        <div class="logo">
+            <h1>Anime<span>🍁</span></h1>
         </div>
+        
+        <div class="buscador">
+            <label for="buscar" class="sr-only">Buscar anime...</label>
+            <input id="buscar" type="search" placeholder="Buscar anime...">
+        </div>
+
+        <nav aria-label="Navegación principal">
+            <button id="btn-temporada" class="activo">Animes de Temporada</button>
+            <button id="btn-calendario">Horarios de Emisión</button>
+        </nav>
     </header>
 
     <main>
-        <!-- Botón requerido por la guía -->
-        <button id="cargar">Cargar datos</button>
+        <section id="hero-slider" aria-label="Anime Destacado">
+            <div class="hero-overlay"></div>
+            <div class="hero-container">
+                <div class="hero-poster">
+                    <img id="hero-img-src" src="https://via.placeholder.com/300x450" alt="Cargando Poster...">
+                </div>
+                <div class="hero-content">
+                    <span class="estado" id="hero-estado">TV Anime • Otoño • En emisión</span>
+                    <h2 id="hero-titulo">Conectando...</h2>
+                    <div class="generos"></div>
+                    <p id="hero-sinopsis">Conectando con los servidores de Jikan API...</p>
+                    <div class="hero-botones">
+                        <button class="btn-ver">▶ Ver Detalles</button>
+                        <button class="btn-guardar" id="btn-guardar-favorito">🤍 Guardar en Mongo</button>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-        <!-- Submenú de días (Se ocultará/mostrará con JS después) -->
         <nav id="menu-dias" style="display: none;" aria-label="Días de la semana">
-            <button>Lunes</button>
-            <button>Martes</button>
-            <button>Miércoles</button>
-            <button>Jueves</button>
-            <button>Viernes</button>
-            <button>Sábado</button>
-            <button>Domingo</button>
+            <button class="dia-btn" data-dia="monday">Lunes</button>
+            <button class="dia-btn" data-dia="tuesday">Martes</button>
+            <button class="dia-btn" data-dia="wednesday">Miércoles</button>
+            <button class="dia-btn" data-dia="thursday">Jueves</button>
+            <button class="dia-btn activo-dia" data-dia="friday">Viernes</button>
+            <button class="dia-btn" data-dia="saturday">Sábado</button>
+            <button class="dia-btn" data-dia="sunday">Domingo</button>
         </nav>
 
-        <!-- Contenedor principal donde inyectaremos las tarjetas -->
         <section id="galeria" aria-label="Galería de animes">
-            <!-- Las tarjetas dinámicas irán aquí -->
-        </section>
+            </section>
+        
+        <button id="cargar" style="display: none;">Cargar más datos</button>
     </main>
 
-    <footer>
-        <p>Hecho por Kirito</p>
-    </footer>
-
-    <!-- Enlazamos nuestro JavaScript -->
     <script src="js/app.js"></script>
 </body>
 </html>
