@@ -27,12 +27,13 @@
             
             <div id="zona-busqueda-interactiva" class="zona-busqueda">
                 <p class="hero-subtitulo" id="subtitulo-hero">Sistema de Sincronización de Base de Datos</p>
-                <input id="buscar" type="search" placeholder="Inicia tu búsqueda..." autocomplete="off">
+                <label for="buscar" class="sr-only">Buscar anime por título o palabra clave</label>
+                <input id="buscar" type="search" placeholder="Inicia tu búsqueda..." autocomplete="off" aria-label="Buscar anime">
                 
                 <div class="contenedor-cascada">
-                    <div class="columna-lista glass-panel-dark" id="lista-resultados"></div>
+                    <div class="columna-lista glass-panel-dark" id="lista-resultados" role="listbox" aria-label="Resultados de búsqueda"></div>
                     
-                    <div class="columna-preview glass-panel-dark" id="panel-lateral-preview"></div>
+                    <div class="columna-preview glass-panel-dark" id="panel-lateral-preview" role="region" aria-label="Vista previa de anime"></div>
                 </div>
             </div>
 
@@ -42,13 +43,13 @@
             <div class="section-header-limpio">
                 <h2>Directorio <span>de Temporada</span><span class="punto-neon">.</span></h2>
             </div>
-            <div class="galeria-grid" id="galeria-temporada"></div>
+            <div class="galeria-grid" id="galeria-temporada" role="grid" aria-label="Galería de animes de temporada"></div>
         </section>
 
         <section id="vista-calendario" class="vista">
             <div class="section-header-limpio">
                 <h2>Horarios <span>de Emisión</span><span class="punto-neon">.</span></h2>
-                <nav id="menu-dias" style="margin-top: 15px;">
+                <nav id="menu-dias" style="margin-top: 15px;" aria-label="Filtro por día de la semana">
                     <button class="dia-btn" data-dia="monday">Lunes</button>
                     <button class="dia-btn" data-dia="tuesday">Martes</button>
                     <button class="dia-btn" data-dia="wednesday">Miércoles</button>
@@ -58,7 +59,7 @@
                     <button class="dia-btn" data-dia="sunday">Domingo</button>
                 </nav>
             </div>
-            <div class="galeria-grid" id="galeria-calendario"></div>
+            <div class="galeria-grid" id="galeria-calendario" role="grid" aria-label="Galería de animes por horario"></div>
         </section>
 
         <section id="vista-boveda" class="vista">
@@ -75,19 +76,43 @@
 
     </main>
 
+    <footer class="footer-premium">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>AniSync Toshokan</h4>
+                <p>Sistema Premium de Sincronización de Anime</p>
+            </div>
+            <div class="footer-section">
+                <h4>Tecnologías</h4>
+                <p>HTML5 | CSS3 | JavaScript | APIs REST</p>
+            </div>
+            <div class="footer-section">
+                <h4>APIs</h4>
+                <p><a href="https://jikan.moe" target="_blank" rel="noopener">Jikan</a> | <a href="https://mymemory.translated.net" target="_blank" rel="noopener">MyMemory</a></p>
+            </div>
+            <div class="footer-section">
+                <h4>Proyecto</h4>
+                <p><a href="https://github.com/WindersonCastrillo/mi-galeria-web" target="_blank" rel="noopener">GitHub</a> | Desafío Front End TI3V31</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 AniSync Toshokan. Hecho con 💜 por Winderson Castrillo</p>
+        </div>
+    </footer>
+
     <div id="modal-detalle" class="modal-oculto">
         <div class="modal-contenido glass-panel-dark">
-            <span class="cerrar-modal" id="btn-cerrar-modal">&times;</span>
+            <span class="cerrar-modal" id="btn-cerrar-modal" role="button" tabindex="0" aria-label="Cerrar">&times;</span>
             <div class="modal-grid">
                 <div class="modal-poster">
-                    <img id="modal-img" src="" alt="Poster">
-                    <button class="btn-guardar-full" id="btn-modal-guardar">🤍 Guardar en Bóveda</button>
+                    <img id="modal-img" src="" alt="Póster del anime">
+                    <button class="btn-guardar-full" id="btn-modal-guardar" aria-label="Guardar anime en bóveda personal">🤍 Guardar en Bóveda</button>
                 </div>
                 <div class="modal-info">
                     <div class="titulo-container">
                         <h2 id="modal-titulo">Título del Anime</h2>
                     </div>
-                    <div class="modal-tags" id="modal-tags"></div>
+                    <div class="modal-tags" id="modal-tags" aria-label="Géneros del anime"></div>
                     <div class="modal-stats-box">
                         <p>⭐ <span id="modal-score" style="color: #b388ff; font-weight: bold;"></span></p>
                         <p>🎬 <span id="modal-eps"></span> episodios</p>
