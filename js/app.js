@@ -1,234 +1,282 @@
-// Referencias principales del DOM
-const galeria = document.getElementById("galeria");
-const heroSlider = document.getElementById("hero-slider");
-const tituloHero = document.getElementById("hero-titulo");
-const sinopsisHero = document.getElementById("hero-sinopsis");
-const generosHero = document.querySelector(".generos");
-const posterHero = document.getElementById("hero-img-src");
+// ==========================================
+// REFERENCIAS DOM Y NAVEGACIÓN SPA
+// ==========================================
+const galeriaTemporada = document.getElementById("galeria-temporada");
+const galeriaCalendario = document.getElementById("galeria-calendario");
 
-// Botón de guardado en Mongo
-const btnGuardarFavorito = document.getElementById("btn-guardar-favorito");
+const inputBuscar = document.getElementById("buscar");
+const listaResultados = document.getElementById("lista-resultados");
+const panelPreview = document.getElementById("panel-lateral-preview");
+const body = document.body;
+let temporizadorBusqueda;
 
-// Referencias de navegación
-const btnTemporada = document.getElementById("btn-temporada");
-const btnCalendario = document.getElementById("btn-calendario");
-const menuDias = document.getElementById("menu-dias");
+const modalDetalle = document.getElementById("modal-detalle");
+const btnCerrarModal = document.getElementById("btn-cerrar-modal");
+const btnModalGuardar = document.getElementById("btn-modal-guardar");
 const botonesDias = document.querySelectorAll(".dia-btn");
 
-// Variable global para saber qué anime está en el Hero Slider en este momento
-let animeDestacadoActual = null;
+let animeModalActual = null;
+const RENDER_API_URL = "https://asuna-cloudcore.onrender.com/favoritos"; 
 
 // ==========================================
-// CONFIGURACIÓN DE TU BACKEND (RENDER + MONGO)
+// CONTROL DE LIENZOS
 // ==========================================
-// ¡Kirito, aquí debes poner la URL de tu API alojada en Render!
-// Por ahora dejo una de prueba (JSONPlaceholder) para que no dé error, pero cámbiala por la tuya.
-const RENDER_API_URL = "https://asuna-cloudcore.onrender.com/favoritos";
+function cambiarVista(idVista) {
+    cerrarBuscador();
+    if(idVista !== 'vista-inicio') {
+        body.classList.add('modo-activo');
+    } else {
+        body.classList.remove('modo-activo');
+    }
+
+    document.querySelectorAll('.vista').forEach(vista => vista.classList.remove('activa'));
+    document.getElementById(idVista).classList.add('activa');
+    document.getElementById(idVista).scrollTo(0, 0);
+}
+
+document.getElementById('logo-dinamico').addEventListener('click', () => {
+    if(body.classList.contains('modo-activo')) cambiarVista('vista-inicio');
+});
 
 // ==========================================
-// FUNCIÓN 1: CARGAR TEMPORADA (Endpoint principal)
+// BÚSQUEDA Y LÓGICA DE LIMPIEZA DE DATOS
+// ==========================================
+inputBuscar.addEventListener("focus", () => body.classList.add('modo-activo'));
+
+inputBuscar.addEventListener("input", (e) => {
+    clearTimeout(temporizadorBusqueda);
+    const textoBusqueda = e.target.value.trim();
+
+    if (textoBusqueda.length === 0) { 
+        listaResultados.classList.remove("visible"); 
+        panelPreview.classList.remove("visible");
+        return; 
+    }
+
+    temporizadorBusqueda = setTimeout(async () => {
+        listaResultados.classList.add("visible");
+        listaResultados.innerHTML = "<div style='padding:20px;text-align:center;'>⏳ Buscando...</div>";
+        panelPreview.classList.remove("visible"); 
+        
+        try {
+            const res = await fetch(`https://api.jikan.moe/v4/anime?q=${textoBusqueda}&sfw`);
+            const json = await res.json();
+            const resultados = json.data;
+            
+            listaResultados.innerHTML = "";
+            if (!resultados || resultados.length === 0) {
+                listaResultados.innerHTML = "<div style='padding:20px;text-align:center;'>No hay registros.</div>"; 
+                return;
+            }
+
+            resultados.slice(0, 8).forEach(anime => {
+                if (!anime.title || !anime.images?.jpg?.large_image_url) return;
+                
+                // Limpieza de datos estricta (Si no existe, no aparece)
+                let extraInfo = "";
+                const hasScore = anime.score != null;
+                const hasYear = anime.year != null;
+                
+                if (hasScore && hasYear) extraInfo = `⭐ ${anime.score} • ${anime.year}`;
+                else if (hasScore) extraInfo = `⭐ ${anime.score}`;
+                else if (hasYear) extraInfo = `${anime.year}`;
+                
+                const paragraph = extraInfo ? `<p style="color: #cbd5e1; font-size:0.8rem;">${extraInfo}</p>` : '';
+
+                const item = document.createElement("div");
+                item.className = "item-busqueda";
+                item.innerHTML = `
+                    <img src="${anime.images.jpg.small_image_url || anime.images.jpg.image_url}">
+                    <div class="info-mini">
+                        <h4>${anime.title}</h4>
+                        ${paragraph}
+                    </div>
+                `;
+
+                item.addEventListener("mouseenter", () => {
+                    document.querySelectorAll('.item-busqueda').forEach(el => el.classList.remove('hovered'));
+                    item.classList.add('hovered');
+                    mostrarPreviewCascada(anime);
+                });
+
+                item.addEventListener("click", () => {
+                    cerrarBuscador();
+                    abrirModal(anime);
+                });
+
+                listaResultados.appendChild(item);
+            });
+        } catch (error) { console.error(error); }
+    }, 400); 
+});
+
+function mostrarPreviewCascada(anime) {
+    panelPreview.classList.add("visible");
+    const sinopsisCorta = anime.synopsis ? anime.synopsis : "Sin información disponible en la base de datos.";
+    
+    panelPreview.innerHTML = `
+        <img class="preview-imagen" src="${anime.images.jpg.large_image_url}" alt="${anime.title}">
+        <h3 class="preview-titulo">${anime.title}</h3>
+        <div class="preview-texto-fade">
+            <p>${sinopsisCorta}</p>
+        </div>
+        <button class="preview-btn" onclick="abrirModalDesdePreview()">Abrir Ficha Completa</button>
+    `;
+    animeModalActual = anime;
+}
+
+window.abrirModalDesdePreview = function() {
+    cerrarBuscador();
+    if(animeModalActual) abrirModal(animeModalActual);
+}
+
+function cerrarBuscador() {
+    inputBuscar.value = "";
+    listaResultados.classList.remove("visible");
+    panelPreview.classList.remove("visible");
+}
+
+// ==========================================
+// CARGA DE DIRECTORIO / HORARIOS
 // ==========================================
 async function cargarTemporada() {
-    galeria.innerHTML = "<p style='text-align:center; color:white; grid-column: 1 / -1;'>Conectando a los servidores de Jikan...</p>";
-    
     try {
         const res = await fetch("https://api.jikan.moe/v4/seasons/now?sfw");
-        if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
-        
         const json = await res.json();
-        
-        // Filtro Antiduplicados
-        const animesUnicos = json.data.filter((anime, index, self) =>
-            index === self.findIndex((a) => a.mal_id === anime.mal_id)
-        );
-        
-        if (!animesUnicos || animesUnicos.length === 0) return;
-
-        // Actualizamos el Hero con el anime más popular y lo guardamos en la variable global
-        animeDestacadoActual = animesUnicos[0];
-        actualizarHero(animeDestacadoActual);
-
-        galeria.innerHTML = ""; 
-        const animesGaleria = animesUnicos.slice(1, 16); 
-        renderizarTarjetas(animesGaleria);
-
-    } catch (error) {
-        mostrarError(error);
-    }
+        const animesUnicos = json.data.filter((anime, index, self) => index === self.findIndex((a) => a.mal_id === anime.mal_id));
+        galeriaTemporada.innerHTML = ""; 
+        renderizarTarjetas(animesUnicos.slice(0, 24), galeriaTemporada);
+    } catch (error) { console.error(error); }
 }
 
-// ==========================================
-// FUNCIÓN 2: CARGAR CALENDARIO POR DÍA
-// ==========================================
 async function cargarDia(dia) {
-    galeria.innerHTML = "<p style='text-align:center; color:white; grid-column: 1 / -1;'>Cargando animes programados...</p>";
-    
     try {
         const res = await fetch(`https://api.jikan.moe/v4/schedules?filter=${dia}&sfw`);
-        if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
-        
         const json = await res.json();
-        
-        // Filtro Antiduplicados
-        const animesUnicos = json.data.filter((anime, index, self) =>
-            index === self.findIndex((a) => a.mal_id === anime.mal_id)
-        );
-        
-        galeria.innerHTML = "";
-        
-        if (!animesUnicos || animesUnicos.length === 0) {
-            galeria.innerHTML = "<p style='color:white; text-align:center; grid-column: 1 / -1;'>No hay animes fuertes programados para este día.</p>";
-            return;
-        }
-
-        renderizarTarjetas(animesUnicos);
-
-    } catch (error) {
-        mostrarError(error);
-    }
+        const animesUnicos = json.data.filter((anime, index, self) => index === self.findIndex((a) => a.mal_id === anime.mal_id));
+        galeriaCalendario.innerHTML = "";
+        renderizarTarjetas(animesUnicos, galeriaCalendario);
+    } catch (error) { console.error(error); }
 }
 
-// ==========================================
-// FUNCIÓN BONUS: PETICIÓN POST A RENDER/MONGO
-// ==========================================
-async function guardarEnMongoDB(anime) {
-    // Si no hay anime cargado, no hacemos nada
-    if (!anime) return;
-
-    // Cambiamos el texto del botón para que el usuario sepa que está cargando
-    const textoOriginal = btnGuardarFavorito.textContent;
-    btnGuardarFavorito.textContent = "⏳ Guardando...";
-    btnGuardarFavorito.disabled = true;
-
-    try {
-        // Armamos el JSON con los datos específicos que queremos guardar en tu base de datos
-        const datosAnime = {
-            mal_id: anime.mal_id,
-            titulo: anime.title,
-            imagen: anime.images.jpg.large_image_url,
-            puntaje: anime.score,
-            episodios: anime.episodes
-        };
-
-        // Hacemos el fetch con método POST
-        const res = await fetch(RENDER_API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(datosAnime)
-        });
-
-        if (!res.ok) throw new Error(`Error HTTP POST: ${res.status}`);
-
-        const respuestaBackend = await res.json();
-        console.log("¡Éxito! Datos guardados en la Base de Datos:", respuestaBackend);
-        
-        // Alerta bonita para confirmar
-        btnGuardarFavorito.textContent = "✅ ¡Guardado!";
-        btnGuardarFavorito.style.background = "#10b981"; // Lo ponemos verde
-        btnGuardarFavorito.style.borderColor = "#10b981";
-
-        // Volvemos al estilo normal después de 2 segundos
-        setTimeout(() => {
-            btnGuardarFavorito.textContent = textoOriginal;
-            btnGuardarFavorito.style.background = "rgba(255, 255, 255, 0.1)";
-            btnGuardarFavorito.style.borderColor = "rgba(255, 255, 255, 0.2)";
-            btnGuardarFavorito.disabled = false;
-        }, 2000);
-
-    } catch (error) {
-        console.error("Error al intentar guardar en Mongo:", error);
-        alert("Ocurrió un error al guardar el favorito. Revisa la consola.");
-        btnGuardarFavorito.textContent = textoOriginal;
-        btnGuardarFavorito.disabled = false;
-    }
-}
-
-// ==========================================
-// FUNCIONES AUXILIARES (Renderizado y Errores)
-// ==========================================
-function renderizarTarjetas(animes) {
+function renderizarTarjetas(animes, contenedor) {
     animes.forEach(anime => {
         if (!anime.title || !anime.images?.jpg?.large_image_url) return;
-
+        const score = anime.score ? `⭐ ${anime.score}` : 'En emisión';
         const tarjeta = document.createElement("article");
         tarjeta.className = "tarjeta";
-        
         tarjeta.innerHTML = `
-            <img src="${anime.images.jpg.large_image_url}" alt="Portada de ${anime.title}">
+            <img src="${anime.images.jpg.large_image_url}" loading="lazy">
             <div class="tarjeta-info">
                 <h3>${anime.title}</h3>
-                <p style="color: #ff5722; font-size: 0.85rem; font-weight: 600;">
-                    ⭐ ${anime.score || 'N/A'} &nbsp; • &nbsp; ${anime.episodes ? anime.episodes + ' Eps' : 'Emisión'}
-                </p>
+                <p style="color: var(--acento); font-size: 0.85rem; font-weight: 600;">${score}</p>
             </div>
         `;
-        galeria.appendChild(tarjeta);
+        tarjeta.addEventListener("click", () => abrirModal(anime));
+        contenedor.appendChild(tarjeta);
     });
 }
 
-function actualizarHero(anime) {
-    tituloHero.textContent = anime.title;
-    sinopsisHero.textContent = anime.synopsis ? anime.synopsis : "Sin sinopsis disponible.";
-    posterHero.src = anime.images.jpg.large_image_url;
-    heroSlider.style.backgroundImage = `url('${anime.images.jpg.large_image_url}')`;
+// ==========================================
+// MODAL PREMIUM
+// ==========================================
+async function abrirModal(anime) {
+    animeModalActual = anime; 
     
-    generosHero.innerHTML = "";
-    if (anime.genres && anime.genres.length > 0) {
-        anime.genres.slice(0, 3).forEach(genero => {
-            const span = document.createElement("span");
-            span.textContent = genero.name;
-            generosHero.appendChild(span);
+    document.getElementById("modal-img").src = anime.images.jpg.large_image_url;
+    document.getElementById("modal-titulo").textContent = anime.title;
+    document.getElementById("modal-score").textContent = anime.score || 'N/A';
+    document.getElementById("modal-eps").textContent = anime.episodes || '?';
+    document.getElementById("modal-emision").textContent = anime.status || '?';
+    
+    btnModalGuardar.textContent = "🤍 Guardar en Bóveda";
+    btnModalGuardar.style.background = "var(--acento)";
+    btnModalGuardar.style.color = "#000";
+    btnModalGuardar.disabled = false;
+
+    const contenedorTags = document.getElementById("modal-tags");
+    contenedorTags.innerHTML = "";
+    if (anime.genres) {
+        anime.genres.forEach(g => {
+            const span = document.createElement("span"); span.textContent = g.name; contenedorTags.appendChild(span);
         });
     }
+
+    const pSinopsis = document.getElementById("modal-sinopsis");
+    const indicador = document.getElementById("indicador-traduccion");
+    
+    if (anime.synopsis) {
+        pSinopsis.textContent = anime.synopsis; 
+        indicador.textContent = "Traduciendo...";
+        try {
+            const textoLimpio = anime.synopsis.substring(0, 499);
+            const resTrad = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(textoLimpio)}&langpair=en|es`);
+            const dataTrad = await resTrad.json();
+            
+            if (dataTrad.responseData && dataTrad.responseData.translatedText) {
+                pSinopsis.textContent = dataTrad.responseData.translatedText + "...";
+                indicador.textContent = "Traducido";
+            } else {
+                indicador.textContent = "Inglés";
+            }
+        } catch (e) { indicador.textContent = "Inglés"; }
+    } else {
+        pSinopsis.textContent = "No hay sinopsis disponible.";
+        indicador.textContent = "";
+    }
+
+    modalDetalle.classList.add("modal-visible");
 }
 
-function mostrarError(error) {
-    console.error("Error en la petición:", error);
-    galeria.innerHTML = `<p style='color: #ff5722; text-align:center; grid-column: 1 / -1;'>
-        Ocurrió un error al cargar los datos. <br> Detalle: ${error.message}
-    </p>`;
-}
-
-// ==========================================
-// EVENTOS DE BOTONES Y PESTAÑAS
-// ==========================================
-
-// Evento para el botón de POST (Guardar en Mongo)
-btnGuardarFavorito.addEventListener("click", () => {
-    guardarEnMongoDB(animeDestacadoActual);
+btnCerrarModal.addEventListener("click", () => modalDetalle.classList.remove("modal-visible"));
+window.addEventListener("click", (e) => {
+    if (e.target === modalDetalle) modalDetalle.classList.remove("modal-visible");
 });
 
-btnCalendario.addEventListener("click", () => {
-    btnCalendario.classList.add("activo");
-    btnTemporada.classList.remove("activo");
-    
-    heroSlider.style.display = "none"; 
-    menuDias.style.display = "flex";   
-    
-    cargarDia("friday"); 
+// Guardado Mongo
+btnModalGuardar.addEventListener("click", async () => {
+    if (!animeModalActual) return;
+    btnModalGuardar.textContent = "⏳ Sincronizando...";
+    btnModalGuardar.disabled = true;
+
+    try {
+        const datosAnime = {
+            mal_id: animeModalActual.mal_id,
+            titulo: animeModalActual.title,
+            imagen: animeModalActual.images.jpg.large_image_url,
+            puntaje: animeModalActual.score,
+            episodios: animeModalActual.episodes,
+            horario_emision: animeModalActual.broadcast ? animeModalActual.broadcast : null 
+        };
+        const res = await fetch(RENDER_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(datosAnime)
+        });
+        if (!res.ok) throw new Error(`Error HTTP`);
+        btnModalGuardar.textContent = "✅ Asegurado en la Bóveda";
+        btnModalGuardar.style.background = "#10b981";
+        btnModalGuardar.style.color = "#fff";
+    } catch (error) {
+        btnModalGuardar.textContent = "❌ Error de conexión";
+        setTimeout(() => { 
+            btnModalGuardar.textContent = "🤍 Guardar en Bóveda"; 
+            btnModalGuardar.disabled = false; 
+            btnModalGuardar.style.background = "var(--acento)";
+            btnModalGuardar.style.color = "#000";
+        }, 3000);
+    }
 });
 
-btnTemporada.addEventListener("click", () => {
-    btnTemporada.classList.add("activo");
-    btnCalendario.classList.remove("activo");
-    
-    menuDias.style.display = "none";   
-    heroSlider.style.display = "block"; 
-    
-    cargarTemporada(); 
-});
-
-botonesDias.forEach(boton => {
-    boton.addEventListener("click", (e) => {
-        botonesDias.forEach(b => b.classList.remove("activo-dia"));
+botonesDias.forEach(b => {
+    b.addEventListener("click", (e) => {
+        botonesDias.forEach(btn => btn.classList.remove("activo-dia"));
         e.target.classList.add("activo-dia");
-        
-        const diaSeleccionado = e.target.getAttribute("data-dia");
-        cargarDia(diaSeleccionado);
+        cargarDia(e.target.getAttribute("data-dia"));
     });
 });
 
-// Iniciar aplicación al cargar la página
-document.addEventListener("DOMContentLoaded", cargarTemporada);
+document.addEventListener("DOMContentLoaded", () => {
+    cargarTemporada();
+    cargarDia("friday");
+});
