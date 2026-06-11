@@ -1,332 +1,165 @@
-# AniSync Toshokan 🎌 - Desafío Front End
+# mi-galeria-web — AniSync Toshokan
 
-> **Sistema Premium de Sincronización de Base de Datos de Anime**  
-> Una experiencia web dinámica, interactiva y visualmente cautivadora para descubrir, rastrear y guardar tus animes favoritos en tiempo real.
+Sitio web estático (HTML/CSS/JS) que sirve como una galería interactiva de animes. Incluye búsqueda usando la API pública Jikan, listado de temporada actual, horarios por día y una "Bóveda" para guardar favoritos mediante un pequeño backend en Python/Flask que persiste en MongoDB.
 
----
-
-## 🌟 **Características Principales**
-
-### 🔍 **Búsqueda Interactiva en Tiempo Real**
-- Búsqueda dinámica con API Jikan
-- Debouncing de 400ms para optimizar peticiones
-- Resultados con imágenes y metadatos
-
-### 🎬 **Previsualización Cascada**
-- Panel lateral izquierdo con vista previa al pasar el mouse
-- Efecto de desvanecimiento con máscara CSS (zero-scroll)
-- Póster, título, sinopsis traducida al español automáticamente
-- Información coherente: solo muestra datos disponibles
-
-### 🎪 **Galería de Temporada**
-- Directorio de animes en emisión actual
-- Filtro interactivo por día de la semana
-- Diseño responsivo en grid adaptativo
-
-### 📅 **Calendario de Horarios**
-- Horarios de emisión por día (Lunes - Domingo)
-- Navegación fluida entre días
-- Estado visual de emisión en tiempo real
-
-### 🤍 **Mi Bóveda Personal**
-- Guarda tus animes favoritos en MongoDB
-- Integración backend con Python/Render
-- Sincronización instantánea
-
-### 🌐 **Traducción Automática**
-- Sinopsis traducidas al español automáticamente
-- API MyMemory para traducción en tiempo real
-- Indicador de estado de traducción
+Estado: proyecto educativo / demostración (no configurado para producción)
 
 ---
 
-## 🛠️ **Stack Tecnológico**
+## Características
 
-```
-┌─────────────────────────────────────────┐
-│           ARQUITECTURA TÉCNICA           │
-├─────────────────────────────────────────┤
-│ Frontend:    HTML5 | CSS3 | JavaScript  │
-│ APIs:        Jikan v4 | MyMemory        │
-│ Backend:     MongoDB | Python/Render    │
-│ Hosting:     GitHub Pages               │
-│ Version:     Git & GitHub               │
-└─────────────────────────────────────────┘
-```
-
-### **Dependencias & Recursos Externos**
-- **Fuente:** Google Fonts - Inter (sans-serif moderna)
-- **API Anime:** [Jikan.moe](https://jikan.moe/docs/api) - Base de datos de anime
-- **API Traducción:** [MyMemory](https://mymemory.translated.net/) - Traducción automática
-- **Backend:** [Render.com](https://render.com) - MongoDB con API Python
+- Búsqueda de animes usando la API Jikan (api.jikan.moe).
+- Hero rotativo con títulos destacados.
+- Catálogo de la temporada actual.
+- Horarios de emisión por día.
+- Ficha de detalles de cada anime.
+- Guardado de favoritos en "Mi Bóveda" mediante un backend (Flask + MongoDB).
+- Implementación frontend con HTML5, CSS3 y JavaScript (vanilla).
 
 ---
 
-## 🎨 **Paleta de Colores & Diseño**
-
-### **Tema: Morado Hacker Premium**
-```css
---acento: #b388ff           /* Morado neón destacado */
---acento-glow: rgba(...)    /* Efecto glow */
---texto: #f8fafc            /* Blanco principal */
---texto-mutado: #94a3b8     /* Gris subtle */
---fondo-panel: rgba(...)    /* Cristal oscuro */
-```
-
-### **Degradado Animado**
-- Linear gradient 135deg desde `#05020a` → `#150a26` → `#05020a`
-- Animación fluida de 15 segundos en bucle infinito
-- Efecto glassmorphism en todos los paneles
-
----
-
-## 📋 **Estructura del Proyecto**
+## Estructura del repositorio
 
 ```
 mi-galeria-web/
-├── index.html              # HTML5 semántico
+├── index.html         # Página principal (frontend)
 ├── css/
-│   └── estilos.css         # CSS3 responsivo (31.7%)
+│   └── estilos.css    # Estilos (no se incluye en este README)
 ├── js/
-│   └── app.js              # JavaScript SPA (51.8%)
-├── README.md               # Documentación (este archivo)
-└── .gitignore
+│   └── app.js         # Lógica JS: consumo de API, SPA y UI
+├── server.py          # API simple en Flask para guardar/obtener favoritos (MongoDB)
+├── requirements.txt   # Dependencias Python para el backend
+└── README.md          # Documentación (este archivo)
 ```
-
-### **Composición de Lenguajes**
-- **JavaScript:** 51.8% - Lógica SPA, APIs, DOM
-- **CSS:** 31.7% - Estilos, animaciones, responsive
-- **HTML:** 16.5% - Estructura semántica
 
 ---
 
-## 🚀 **Cómo Usar**
+## Tecnologías
 
-### **1. Clonar el Repositorio**
+- Frontend: HTML, CSS, JavaScript (vanilla)
+- APIs externas: Jikan (anime), MyMemory (traducción opcional)
+- Backend: Python 3, Flask, PyMongo
+- Base de datos: MongoDB (Atlas u otra instancia compatible)
+
+---
+
+## Requisitos
+
+Para usar solo el frontend:
+- Navegador moderno (Chrome/Firefox/Edge/Safari)
+
+Para ejecutar el backend localmente:
+- Python 3.8+
+- pip
+- Una instancia de MongoDB accesible (MongoDB Atlas o local)
+
+Instala dependencias del backend:
+
+```bash
+pip install -r requirements.txt
+```
+
+--
+
+## Ejecutar el proyecto
+
+Opción A — Abrir solo el frontend (rápido, sin guardar favoritos):
+
+1. Clona el repo:
+
 ```bash
 git clone https://github.com/WindersonCastrillo/mi-galeria-web.git
 cd mi-galeria-web
 ```
 
-### **2. Abrir en el Navegador**
-```bash
-# Opción 1: Abrir index.html directamente
-open index.html
+2. Abre `index.html` en tu navegador o levanta un servidor estático:
 
-# Opción 2: Con servidor local (recomendado)
+```bash
 python3 -m http.server 8000
-# Luego ir a http://localhost:8000
+# Abrir http://localhost:8000
 ```
 
-### **3. Funcionalidades Principales**
+Opción B — Ejecutar backend local para usar "Mi Bóveda":
 
-#### **Buscar Anime**
-1. Haz clic en el buscador superior
-2. Escribe el nombre del anime (ej: "Demon Slayer")
-3. Los resultados aparecen instantáneamente
-4. Pasa el mouse para ver detalles
-5. Haz clic para abrir ficha completa
+1. Configura la cadena de conexión de MongoDB en `server.py` (reemplaza la URI hardcodeada):
 
-#### **Explorar Temporada Actual**
-1. Navega a la pestaña "Directorio"
-2. Ve los animes en emisión actualmente
-3. Haz clic en cualquiera para más detalles
+```py
+# server.py
+cliente = MongoClient('TU_MONGODB_URI_AQUI')
+```
 
-#### **Ver Horarios de Emisión**
-1. Abre la pestaña "Horarios"
-2. Selecciona el día de la semana
-3. Ve qué se emite ese día
+2. Crea y activa un entorno virtual (opcional) e instala requisitos:
 
-#### **Guardar en Tu Bóveda**
-1. Abre la ficha de un anime
-2. Haz clic en "🤍 Guardar en Bóveda"
-3. Se sincroniza con tu colección personal
-
----
-
-## ✅ **Cumplimiento de Rúbrica**
-
-### **RETO 1: HTML Semántico (10/10 pts)**
-- ✅ Estructura con etiquetas semánticas (`<header>`, `<nav>`, `<main>`, `<section>`, `<footer>`)
-- ✅ Jerarquía correcta de encabezados (`<h1>` único)
-- ✅ Labels asociados a inputs con atributos `for`/`id`
-- ✅ Atributos `alt` en todas las imágenes dinámicas
-- ✅ HTML válido según W3C (sin errores)
-- ✅ Accesibilidad: `aria-label` en navegación
-
-### **RETO 2: CSS3 Responsivo (25/25 pts)**
-- ✅ Layout con CSS Grid + Flexbox adaptativo
-- ✅ Diseño responsivo (mobile-first con media queries)
-- ✅ Paleta coherente con variables CSS (`:root`)
-- ✅ Estados visuales: `:hover`, `:focus` visibles
-- ✅ Contraste WCAG AA en tema oscuro
-- ✅ Animaciones suaves (transiciones, keyframes)
-- ✅ Efecto glassmorphism premium
-
-### **RETO 3: Consume APIs (30/30 pts)**
-- ✅ `fetch()` con `async`/`await`
-- ✅ Validación de respuesta HTTP con `.ok`
-- ✅ JSON parsing y manipulación del DOM
-- ✅ Manejo robusto de errores con `try/catch`
-- ✅ Validación de datos antes de renderizar
-- ✅ Mensajes de estado: "Cargando...", "Error", éxito
-- ✅ Dos APIs consumidas: Jikan + MyMemory
-
-### **RETO 4: Control de Versiones (15/15 pts)**
-- ✅ Repositorio público en GitHub
-- ✅ Commits descriptivos y progresivos (mínimo 5)
-- ✅ Rama main como rama principal
-- ✅ GitHub Pages configurado y publicado
-- ✅ README con descripción completa del proyecto
-
-### **BONUS: Nivel Experto (+10 pts)**
-- ✅ Buscador funcional con historial (localStorage)
-- ✅ Modo favoritos con corazón interactivo
-- ✅ Traducción automática en tiempo real
-- ✅ Validación avanzada de datos
-- ✅ Animaciones suaves y transiciones premium
-- ✅ Integración con backend (MongoDB)
-
-### **📊 Total: 100+ puntos ✨**
-
----
-
-## 🔧 **Desarrollo & Contribuciones**
-
-### **Requisitos Previos**
-- Editor de código (VS Code recomendado)
-- Navegador moderno (Chrome, Firefox, Safari, Edge)
-- Conexión a internet (para APIs)
-- Opcional: Node.js, Git
-
-### **Flujo de Desarrollo**
 ```bash
-# Crear rama de feature
-git checkout -b feature/nueva-funcionalidad
-
-# Hacer cambios, guardar
-git add .
-git commit -m "feat: descripción del cambio"
-
-# Push y crear Pull Request
-git push origin feature/nueva-funcionalidad
+python -m venv .venv
+source .venv/bin/activate  # Linux / macOS
+.\.venv\Scripts\activate   # Windows
+pip install -r requirements.txt
 ```
 
-### **APIs Utilizadas**
+3. Ejecuta el servidor Flask:
 
-#### **Jikan API v4** (Anime Database)
+```bash
+python server.py
+# Por defecto arranca en http://127.0.0.1:5000
+```
+
+4. En el frontend, actualiza la constante `API_URL` en `js/app.js` para apuntar a tu backend local (por defecto está configurada a un enlace de Render):
+
 ```javascript
-// Búsqueda
-GET https://api.jikan.moe/v4/anime?q=query&sfw
-
-// Temporada actual
-GET https://api.jikan.moe/v4/seasons/now?sfw
-
-// Horarios por día
-GET https://api.jikan.moe/v4/schedules?filter=day&sfw
+const API_URL = 'http://127.0.0.1:5000';
 ```
 
-#### **MyMemory Translate API**
-```javascript
-// Traducción de texto
-GET https://api.mymemory.translated.net/get?q=text&langpair=en|es
-```
-
-#### **Backend (Render)** (Favoritos)
-```javascript
-// Guardar anime en MongoDB
-POST https://asuna-cloudcore.onrender.com/favoritos
-```
+Con esto podrás guardar y listar favoritos desde la "Bóveda".
 
 ---
 
-## 📱 **Responsive Design**
+## Endpoints del backend (server.py)
 
-### **Breakpoints**
-- **Desktop:** 950px+ (layout completo)
-- **Tablet:** 768px - 949px (ajustes grid)
-- **Mobile:** <768px (single column, full width)
+- POST /api/guardar
+  - Cuerpo: JSON con al menos { mal_id, title, image_url, type, year, status, score }
+  - Respuestas:
+    - 201: { mensaje: "Anime guardado con éxito", status: "ok" }
+    - 200: { mensaje: "Este anime ya está en tu bóveda", status: "duplicado" }
 
-### **Características Mobile**
-- ✅ Búsqueda adaptada
-- ✅ Preview en modal en lugar de panel lateral
-- ✅ Navegación optimizada para touch
-- ✅ Tipografía legible en pantallas pequeñas
+- GET /api/boveda
+  - Devuelve: array JSON de animes guardados (sin _id)
 
----
-
-## 🎓 **Conceptos Aprendidos**
-
-Este proyecto cubre:
-- **SPA (Single Page Application)** - Navegación sin recargas
-- **DOM Manipulation** - Crear, modificar, eliminar elementos
-- **Async/Await** - Programación asincrónica
-- **API REST** - Consumo de servicios externos
-- **CSS Avanzado** - Grid, Flexbox, animaciones, glassmorphism
-- **Accesibilidad (A11y)** - Labels, alt, aria-label
-- **Responsive Design** - Mobile-first
-- **Git & GitHub** - Control de versiones
-- **localStorage** - Almacenamiento del lado cliente
+Nota: server.py actualmente contiene una URI de MongoDB en claro — reemplaza esa URI por tu credencial/URI segura y no publiques credenciales.
 
 ---
 
-## 🐛 **Troubleshooting**
+## Seguridad y privacidad
 
-### **Las imágenes no cargan**
-- Verifica conexión a internet
-- Chequea que la API Jikan esté disponible
-
-### **La traducción tarda mucho**
-- Es normal, es una API de terceros
-- Las búsquedas posteriores caché las traducciones
-
-### **El modal se cierra rápido**
-- Intenta hacer clic en el botón "Guardar" primero
-
-### **GitHub Pages no se actualiza**
-- Espera 1-2 minutos a que GitHub construya
-- Limpia el caché del navegador (Ctrl+Shift+Del)
+- No se deben subir credenciales (URI de MongoDB, claves) al repositorio público.
+- Si vas a desplegar el backend, usa variables de entorno para la cadena de conexión y habilita autenticación/SSL en MongoDB.
 
 ---
 
-## 📞 **Contacto & Redes**
+## Contribuciones
 
-- **GitHub:** [@WindersonCastrillo](https://github.com/WindersonCastrillo)
-- **Proyecto:** [AniSync Toshokan](https://github.com/WindersonCastrillo/mi-galeria-web)
+Este proyecto es una demostración educativa. Si quieres contribuir:
 
----
-
-## 📄 **Licencia**
-
-Este proyecto es parte del desafío **"Programación Front End - TI3V31 - Unidad 1"**  
-Desarrollado como ejercicio educativo de aplicación web dinámica.
+1. Haz fork del repositorio.
+2. Crea una rama feature/mi-cambio.
+3. Envía un Pull Request con una descripción clara.
 
 ---
 
-## 🙏 **Créditos**
+## Créditos
 
-- **Diseño & Concepto:** AniSync Toshokan
-- **APIs:** Jikan, MyMemory, Render
-- **Fuentes:** Google Fonts (Inter)
-- **Inspiración:** Netflix, Crunchyroll, Letterboxd
+- Proyecto/Concepto: AniSync Toshokan — desarrollado por Winderson Castrillo
+- APIs: Jikan (https://jikan.moe), MyMemory (opcional)
 
 ---
 
-## 🎯 **Próximas Mejoras**
+## Licencia
 
-- [ ] Filtros avanzados (géneros, año, estado)
-- [ ] Integración con MAL (MyAnimeList)
-- [ ] Notificaciones de nuevos episodios
-- [ ] Modo offline con Service Workers
-- [ ] Recomendaciones personalizadas
-- [ ] Sistema de reviews de usuario
+No se especificó una licencia en el repositorio. Si quieres permitir contribuciones/uso libre, añade un archivo LICENSE (por ejemplo MIT). Si prefieres otro modelo, indícalo aquí.
 
 ---
 
-<div align="center">
-
-### ⭐ Si te gustó el proyecto, ¡no olvides dar una estrella!
-
-**Made with 💜 by Winderson Castrillo**
-
-</div>
+Si quieres, puedo:
+- Añadir badges (GitHub Pages, licencia, tecnologías)
+- Publicar una versión más corta del README enfocada a usuarios finales
+- Crear un archivo LICENSE (p. ej. MIT) y añadirlo al repo
