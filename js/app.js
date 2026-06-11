@@ -1,362 +1,254 @@
-// ==========================================
-// REFERENCIAS DOM Y NAVEGACIÓN SPA
-// ==========================================
-const galeriaTemporada = document.getElementById("galeria-temporada");
-const galeriaCalendario = document.getElementById("galeria-calendario");
-
-const inputBuscar = document.getElementById("buscar");
-const listaResultados = document.getElementById("lista-resultados");
-const panelPreview = document.getElementById("panel-lateral-preview");
-const body = document.body;
 let temporizadorBusqueda;
+let vistaAnterior = 'vista-inicio'; // Para saber a dónde volver desde detalles
 
-const modalDetalle = document.getElementById("modal-detalle");
-const btnCerrarModal = document.getElementById("btn-cerrar-modal");
-const btnModalGuardar = document.getElementById("btn-modal-guardar");
-const botonesDias = document.querySelectorAll(".dia-btn");
+// Banderas de control (Para evitar que cargue vacío o repita llamadas)
+let catalogoCargado = false; 
+let horariosCargados = false;
 
-let animeModalActual = null;
-const RENDER_API_URL = "https://asuna-cloudcore.onrender.com/favoritos"; 
+// Variables para el Hero Dinámico
+let heroAnimes = [];
+let indiceHeroActual = 0;
+let intervaloHero;
 
-// Historial de búsquedas en localStorage
-let historialBusquedas = JSON.parse(localStorage.getItem('historialBusquedas')) || [];
+const traduccionesTemporada = { "spring": "Primavera", "summer": "Verano", "fall": "Otoño", "winter": "Invierno" };
+const traduccionesEstado = { "Currently Airing": "En emisión", "Finished Airing": "Finalizado", "Not yet aired": "Próximamente" };
 
-// ==========================================
-// CONTROL DE LIENZOS (VISTAS SPA)
-// ==========================================
+// Filtro anti-clones
+function eliminarDuplicados(animesArray) {
+    const vistos = new Set();
+    return animesArray.filter(anime => {
+        if (vistos.has(anime.mal_id)) return false;
+        vistos.add(anime.mal_id);
+        return true;
+    });
+}
+
+// 1. Navegación SPA con Banderas Seguras
 function cambiarVista(idVista) {
-    cerrarBuscador();
-    if(idVista !== 'vista-inicio') {
-        body.classList.add('modo-activo');
-    } else {
-        body.classList.remove('modo-activo');
+    if(idVista !== 'vista-detalles') {
+        vistaAnterior = idVista; // Guardamos el rastro para el botón "Volver"
     }
 
-    document.querySelectorAll('.vista').forEach(vista => vista.classList.remove('activa'));
+    document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
     document.getElementById(idVista).classList.add('activa');
-    document.getElementById(idVista).scrollTo(0, 0);
-}
-
-document.getElementById('logo-dinamico').addEventListener('click', () => {
-    if(body.classList.contains('modo-activo')) cambiarVista('vista-inicio');
-});
-
-// ==========================================
-// BÚSQUEDA Y LÓGICA DE LIMPIEZA DE DATOS
-// ==========================================
-inputBuscar.addEventListener("focus", () => body.classList.add('modo-activo'));
-
-inputBuscar.addEventListener("input", (e) => {
-    clearTimeout(temporizadorBusqueda);
-    const textoBusqueda = e.target.value.trim();
-
-    if (textoBusqueda.length === 0) { 
-        listaResultados.classList.remove("visible"); 
-        panelPreview.classList.remove("visible");
-        return; 
-    }
-
-    temporizadorBusqueda = setTimeout(async () => {
-        listaResultados.classList.add("visible");
-        listaResultados.innerHTML = "<div style='padding:20px;text-align:center;'>⏳ Buscando...</div>";
-        panelPreview.classList.remove("visible"); 
-        
-        try {
-            const res = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(textoBusqueda)}&sfw`);
-            
-            // Validación robusta de respuesta HTTP
-            if (!res.ok) {
-                throw new Error(`Error HTTP ${res.status}: ${res.statusText}`);
-            }
-            
-            const json = await res.json();
-            const resultados = json.data;
-            
-            listaResultados.innerHTML = "";
-            if (!resultados || resultados.length === 0) {
-                listaResultados.innerHTML = "<div style='padding:20px;text-align:center; color: #94a3b8;'>❌ No hay registros para: <strong>" + textoBusqueda + "</strong></div>"; 
-                return;
-            }
-
-            // Guardar búsqueda en historial
-            guardarBusqueda(textoBusqueda);
-
-            resultados.slice(0, 8).forEach(anime => {
-                if (!anime.title || !anime.images?.jpg?.large_image_url) return;
-                
-                // Limpieza de datos estricta (Si no existe, no aparece)
-                let extraInfo = "";
-                const hasScore = anime.score != null;
-                const hasYear = anime.year != null;
-                
-                if (hasScore && hasYear) extraInfo = `⭐ ${anime.score} • ${anime.year}`;
-                else if (hasScore) extraInfo = `⭐ ${anime.score}`;
-                else if (hasYear) extraInfo = `${anime.year}`;
-                
-                const paragraph = extraInfo ? `<p style="color: #cbd5e1; font-size:0.8rem;">${extraInfo}</p>` : '';
-
-                const item = document.createElement("div");
-                item.className = "item-busqueda";
-                item.role = "option";
-                item.innerHTML = `
-                    <img src="${anime.images.jpg.small_image_url || anime.images.jpg.image_url}" alt="${anime.title} póster" loading="lazy">
-                    <div class="info-mini">
-                        <h4>${anime.title}</h4>
-                        ${paragraph}
-                    </div>
-                `;
-
-                item.addEventListener("mouseenter", () => {
-                    document.querySelectorAll('.item-busqueda').forEach(el => el.classList.remove('hovered'));
-                    item.classList.add('hovered');
-                    mostrarPreviewCascada(anime);
-                });
-
-                item.addEventListener("click", () => {
-                    cerrarBuscador();
-                    abrirModal(anime);
-                });
-
-                listaResultados.appendChild(item);
-            });
-        } catch (error) { 
-            console.error('Error en búsqueda:', error);
-            listaResultados.innerHTML = `<div style='padding:20px; text-align:center; color: #ff6b6b;'>
-                ⚠️ Error al buscar<br>
-                <small style="color: #94a3b8;">${error.message}</small>
-            </div>`; 
-        }
-    }, 400); 
-});
-
-// Guardar búsqueda en historial con localStorage
-function guardarBusqueda(termino) {
-    if (!historialBusquedas.includes(termino)) {
-        historialBusquedas.unshift(termino);
-        if (historialBusquedas.length > 10) historialBusquedas.pop();
-        localStorage.setItem('historialBusquedas', JSON.stringify(historialBusquedas));
-    }
-}
-
-function mostrarPreviewCascada(anime) {
-    panelPreview.classList.add("visible");
-    const sinopsisCorta = anime.synopsis ? anime.synopsis : "Sin información disponible en la base de datos.";
     
-    panelPreview.innerHTML = `
-        <img class="preview-imagen" src="${anime.images.jpg.large_image_url}" alt="${anime.title} póster completo" loading="lazy">
-        <h3 class="preview-titulo">${anime.title}</h3>
-        <div class="preview-texto-fade">
-            <p>${sinopsisCorta}</p>
-        </div>
-        <button class="preview-btn" onclick="abrirModalDesdePreview()">Abrir Ficha Completa</button>
-    `;
-    animeModalActual = anime;
+    document.getElementById('buscar').value = ''; 
+    document.getElementById('lista-resultados').style.display = 'none';
+
+    // Cargas Automáticas controladas por banderas
+    if (idVista === 'vista-directorio' && !catalogoCargado) {
+        cargarDirectorio();
+    } else if (idVista === 'vista-calendario' && !horariosCargados) {
+        cargarHorario('monday', document.querySelector('.menu-dias button'));
+        horariosCargados = true;
+    }
 }
 
-window.abrirModalDesdePreview = function() {
-    cerrarBuscador();
-    if(animeModalActual) abrirModal(animeModalActual);
-}
-
-function cerrarBuscador() {
-    inputBuscar.value = "";
-    listaResultados.classList.remove("visible");
-    panelPreview.classList.remove("visible");
+function volverDeDetalles() {
+    cambiarVista(vistaAnterior);
 }
 
 // ==========================================
-// CARGA DE DIRECTORIO / HORARIOS
+// 2. HERO DINÁMICO (Animación y Rotación)
 // ==========================================
-async function cargarTemporada() {
+async function iniciarHeroRotativo() {
     try {
-        const res = await fetch("https://api.jikan.moe/v4/seasons/now?sfw");
+        // Pedimos los 8 animes más populares en emisión ahora
+        const respuesta = await fetch('https://api.jikan.moe/v4/top/anime?filter=airing&limit=8');
+        const data = await respuesta.json();
         
-        if (!res.ok) {
-            throw new Error(`Error HTTP ${res.status}: No se pudo cargar la temporada`);
+        // Filtramos para asegurarnos que tengan sinopsis e imagen
+        heroAnimes = eliminarDuplicados(data.data).filter(a => a.synopsis && a.images.jpg.large_image_url);
+        
+        if (heroAnimes.length > 0) {
+            actualizarUIHero(); // Mostrar el primero
+            // Programar el cambio cada 7 segundos
+            intervaloHero = setInterval(cambiarHeroSiguiente, 7000);
         }
-        
-        const json = await res.json();
-        const animesUnicos = json.data.filter((anime, index, self) => index === self.findIndex((a) => a.mal_id === anime.mal_id));
-        galeriaTemporada.innerHTML = ""; 
-        renderizarTarjetas(animesUnicos.slice(0, 24), galeriaTemporada);
-    } catch (error) { 
-        console.error('Error cargando temporada:', error);
-        galeriaTemporada.innerHTML = `<div style='grid-column: 1/-1; text-align: center; padding: 40px; color: #ff6b6b;'>
-            ⚠️ Error al cargar temporada: ${error.message}
-        </div>`;
-    }
-}
-
-async function cargarDia(dia) {
-    try {
-        const res = await fetch(`https://api.jikan.moe/v4/schedules?filter=${dia}&sfw`);
-        
-        if (!res.ok) {
-            throw new Error(`Error HTTP ${res.status}: No se pudo cargar el horario`);
-        }
-        
-        const json = await res.json();
-        const animesUnicos = json.data.filter((anime, index, self) => index === self.findIndex((a) => a.mal_id === anime.mal_id));
-        galeriaCalendario.innerHTML = "";
-        renderizarTarjetas(animesUnicos, galeriaCalendario);
-    } catch (error) { 
-        console.error('Error cargando día:', error);
-        galeriaCalendario.innerHTML = `<div style='grid-column: 1/-1; text-align: center; padding: 40px; color: #ff6b6b;'>
-            ⚠️ Error al cargar horario: ${error.message}
-        </div>`;
-    }
-}
-
-function renderizarTarjetas(animes, contenedor) {
-    animes.forEach(anime => {
-        if (!anime.title || !anime.images?.jpg?.large_image_url) return;
-        const score = anime.score ? `⭐ ${anime.score}` : 'En emisión';
-        const tarjeta = document.createElement("article");
-        tarjeta.className = "tarjeta";
-        tarjeta.innerHTML = `
-            <img src="${anime.images.jpg.large_image_url}" alt="${anime.title} póster" loading="lazy">
-            <div class="tarjeta-info">
-                <h3>${anime.title}</h3>
-                <p style="color: var(--acento); font-size: 0.85rem; font-weight: 600;">${score}</p>
-            </div>
-        `;
-        tarjeta.addEventListener("click", () => abrirModal(anime));
-        contenedor.appendChild(tarjeta);
-    });
-}
-
-// ==========================================
-// MODAL PREMIUM
-// ==========================================
-async function abrirModal(anime) {
-    animeModalActual = anime; 
-    
-    document.getElementById("modal-img").src = anime.images.jpg.large_image_url;
-    document.getElementById("modal-img").alt = `${anime.title} - Póster oficial`;
-    document.getElementById("modal-titulo").textContent = anime.title;
-    document.getElementById("modal-score").textContent = anime.score || 'N/A';
-    document.getElementById("modal-eps").textContent = anime.episodes || '?';
-    document.getElementById("modal-emision").textContent = anime.status || '?';
-    
-    btnModalGuardar.textContent = "🤍 Guardar en Bóveda";
-    btnModalGuardar.style.background = "var(--acento)";
-    btnModalGuardar.style.color = "#000";
-    btnModalGuardar.disabled = false;
-
-    const contenedorTags = document.getElementById("modal-tags");
-    contenedorTags.innerHTML = "";
-    if (anime.genres) {
-        anime.genres.forEach(g => {
-            const span = document.createElement("span"); 
-            span.textContent = g.name; 
-            contenedorTags.appendChild(span);
-        });
-    }
-
-    const pSinopsis = document.getElementById("modal-sinopsis");
-    const indicador = document.getElementById("indicador-traduccion");
-    
-    if (anime.synopsis) {
-        pSinopsis.textContent = anime.synopsis; 
-        indicador.textContent = "Traduciendo...";
-        try {
-            const textoLimpio = anime.synopsis.substring(0, 499);
-            const resTrad = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(textoLimpio)}&langpair=en|es`);
-            
-            if (!resTrad.ok) {
-                throw new Error(`Error en traducción HTTP ${resTrad.status}`);
-            }
-            
-            const dataTrad = await resTrad.json();
-            
-            if (dataTrad.responseData && dataTrad.responseData.translatedText) {
-                pSinopsis.textContent = dataTrad.responseData.translatedText + "...";
-                indicador.textContent = "Traducido";
-            } else {
-                indicador.textContent = "Inglés";
-            }
-        } catch (e) { 
-            console.error('Error en traducción:', e);
-            indicador.textContent = "Inglés"; 
-        }
-    } else {
-        pSinopsis.textContent = "No hay sinopsis disponible.";
-        indicador.textContent = "";
-    }
-
-    modalDetalle.classList.add("modal-visible");
-}
-
-btnCerrarModal.addEventListener("click", () => modalDetalle.classList.remove("modal-visible"));
-btnCerrarModal.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-        modalDetalle.classList.remove("modal-visible");
-    }
-});
-
-window.addEventListener("click", (e) => {
-    if (e.target === modalDetalle) modalDetalle.classList.remove("modal-visible");
-});
-
-// Cerrar modal con ESC
-window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && modalDetalle.classList.contains("modal-visible")) {
-        modalDetalle.classList.remove("modal-visible");
-    }
-});
-
-// ==========================================
-// GUARDADO EN MONGODB (Favoritos)
-// ==========================================
-btnModalGuardar.addEventListener("click", async () => {
-    if (!animeModalActual) return;
-    btnModalGuardar.textContent = "⏳ Sincronizando...";
-    btnModalGuardar.disabled = true;
-
-    try {
-        const datosAnime = {
-            mal_id: animeModalActual.mal_id,
-            titulo: animeModalActual.title,
-            imagen: animeModalActual.images.jpg.large_image_url,
-            puntaje: animeModalActual.score,
-            episodios: animeModalActual.episodes,
-            horario_emision: animeModalActual.broadcast ? animeModalActual.broadcast : null 
-        };
-        
-        const res = await fetch(RENDER_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(datosAnime)
-        });
-        
-        if (!res.ok) {
-            throw new Error(`Error HTTP ${res.status}: No se pudo guardar el anime`);
-        }
-        
-        btnModalGuardar.textContent = "✅ Asegurado en la Bóveda";
-        btnModalGuardar.style.background = "#10b981";
-        btnModalGuardar.style.color = "#fff";
     } catch (error) {
-        console.error('Error al guardar:', error);
-        btnModalGuardar.textContent = "❌ Error de conexión";
-        setTimeout(() => { 
-            btnModalGuardar.textContent = "🤍 Guardar en Bóveda"; 
-            btnModalGuardar.disabled = false; 
-            btnModalGuardar.style.background = "var(--acento)";
-            btnModalGuardar.style.color = "#000";
-        }, 3000);
+        console.error("Error cargando Hero:", error);
+    }
+}
+
+function cambiarHeroSiguiente() {
+    indiceHeroActual = (indiceHeroActual + 1) % heroAnimes.length;
+    actualizarUIHero();
+}
+
+function actualizarUIHero() {
+    const anime = heroAnimes[indiceHeroActual];
+    const contenedor = document.getElementById('hero-contenedor');
+    
+    // 1. Inicia el desvanecimiento
+    contenedor.classList.add('fade-out');
+
+    // 2. Espera medio segundo (lo que dura el CSS) para cambiar los textos
+    setTimeout(() => {
+        const sinopsisLimpia = anime.synopsis.split('[Written by')[0].trim();
+        const temporada = anime.season ? `Temporada ${traduccionesTemporada[anime.season] || anime.season}` : "Actualidad";
+        const estado = traduccionesEstado[anime.status] || anime.status;
+
+        document.getElementById('hero-imagen').src = anime.images.jpg.large_image_url;
+        document.getElementById('hero-titulo').innerText = anime.title;
+        document.getElementById('hero-meta').innerText = `${anime.type || 'TV'} • ${anime.year || new Date().getFullYear()} • ${temporada} • ${estado}`;
+        document.getElementById('hero-sinopsis').innerText = sinopsisLimpia;
+        document.getElementById('hero-rating').innerText = anime.score ? anime.score.toFixed(2) : "N/A";
+        
+        if (anime.genres && anime.genres.length > 0) {
+            document.getElementById('hero-tags').innerHTML = anime.genres.slice(0,4).map(g => `<span class="tag">${g.name}</span>`).join('');
+        }
+
+        // Conectar el botón para que abra sus detalles
+        document.getElementById('btn-hero-detalles').onclick = () => abrirDetalles(anime.mal_id);
+
+        // 3. Vuelve a aparecer la tarjeta con los nuevos datos
+        contenedor.classList.remove('fade-out');
+    }, 500); 
+}
+
+// ==========================================
+// 3. CATÁLOGO INFALIBLE
+// ==========================================
+async function cargarDirectorio() {
+    const grid = document.getElementById('grid-directorio');
+    grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: var(--acento);">Sincronizando catálogo general...</p>';
+
+    try {
+        const respuesta = await fetch('https://api.jikan.moe/v4/seasons/now?limit=24');
+        const data = await respuesta.json();
+        const animesUnicos = eliminarDuplicados(data.data);
+        
+        grid.innerHTML = animesUnicos.map(a => `
+            <div class="tarjeta-anime" onclick="abrirDetalles(${a.mal_id})">
+                <div class="contenedor-portada">
+                    <img src="${a.images.jpg.image_url}" alt="${a.title}">
+                    <span class="etiqueta-flotante">${a.type || 'Anime'}</span>
+                </div>
+                <div class="info-externa">
+                    <p title="${a.title}">${a.title}</p>
+                </div>
+            </div>
+        `).join('');
+        
+        catalogoCargado = true; // Sellamos la bandera
+    } catch (error) {
+        grid.innerHTML = '<p style="grid-column: 1 / -1; color: #ef4444; text-align: center;">Error al cargar el catálogo.</p>';
+        catalogoCargado = false;
+    }
+}
+
+// ==========================================
+// RESTO DE FUNCIONES (Horarios, Buscador y Detalles)
+// ==========================================
+
+async function cargarHorario(dia, btnElement) {
+    document.querySelectorAll('.menu-dias .filtro-btn').forEach(btn => btn.classList.remove('activo'));
+    btnElement.classList.add('activo');
+
+    const grid = document.getElementById('grid-horarios');
+    grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: var(--acento);">Actualizando cartelera del día...</p>';
+
+    try {
+        const respuesta = await fetch(`https://api.jikan.moe/v4/schedules?filter=${dia}&limit=24`);
+        const data = await respuesta.json();
+        const animesUnicos = eliminarDuplicados(data.data);
+        
+        if (animesUnicos.length === 0) {
+            grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center;">No hay emisiones este día.</p>';
+            return;
+        }
+
+        grid.innerHTML = animesUnicos.map(a => `
+            <div class="tarjeta-anime" onclick="abrirDetalles(${a.mal_id})">
+                <div class="contenedor-portada">
+                    <img src="${a.images.jpg.image_url}" alt="${a.title}">
+                    <span class="etiqueta-flotante">${a.broadcast.time || 'Emisión TV'}</span>
+                </div>
+                <div class="info-externa">
+                    <p title="${a.title}">${a.title}</p>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        grid.innerHTML = '<p style="grid-column: 1 / -1; color: #ef4444; text-align: center;">Error de red en horarios.</p>';
+    }
+}
+
+// Buscador
+document.getElementById('buscar').addEventListener('input', (e) => {
+    const query = e.target.value.trim();
+    const lista = document.getElementById('lista-resultados');
+    clearTimeout(temporizadorBusqueda);
+
+    if (query.length > 2) {
+        lista.style.display = 'block';
+        lista.innerHTML = `<p style="padding: 10px; margin: 0; color: var(--acento);">Buscando...</p>`;
+
+        temporizadorBusqueda = setTimeout(async () => {
+            try {
+                const respuesta = await fetch(`https://api.jikan.moe/v4/anime?q=${query}&limit=5`);
+                const data = await respuesta.json();
+                if (data.data.length === 0) {
+                    lista.innerHTML = `<p style="padding: 10px; margin: 0;">No hay resultados.</p>`;
+                    return;
+                }
+                lista.innerHTML = data.data.map(anime => `
+                    <div class="tarjeta-busqueda" onclick="abrirDetalles(${anime.mal_id})">
+                        <img src="${anime.images.jpg.image_url}" alt="${anime.title}">
+                        <div class="tarjeta-busqueda-info">
+                            <h4>${anime.title}</h4>
+                            <span>${anime.year || 'TV Anime'}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                lista.innerHTML = `<p style="padding: 10px; margin: 0; color: #ef4444;">Error de red.</p>`;
+            }
+        }, 400); 
+    } else {
+        lista.style.display = 'none';
     }
 });
 
-botonesDias.forEach(b => {
-    b.addEventListener("click", (e) => {
-        botonesDias.forEach(btn => btn.classList.remove("activo-dia"));
-        e.target.classList.add("activo-dia");
-        cargarDia(e.target.getAttribute("data-dia"));
-    });
-});
+// Detalles Individuales
+async function abrirDetalles(idAnime) {
+    document.getElementById('lista-resultados').style.display = 'none'; 
+    document.getElementById('buscar').value = ''; 
+    cambiarVista('vista-detalles');
+    
+    document.getElementById('detalle-imagen').src = "https://via.placeholder.com/280x420/111827/cbd5e1?text=Cargando...";
+    document.getElementById('detalle-titulo').innerText = "Cargando...";
+    document.getElementById('detalle-meta').innerText = "Conectando...";
+    document.getElementById('detalle-tags').innerHTML = '<span class="tag">Procesando</span>';
+    document.getElementById('detalle-sinopsis').innerText = "Conectando a los servidores...";
+    document.getElementById('detalle-rating-valor').innerText = "-";
 
-document.addEventListener("DOMContentLoaded", () => {
-    cargarTemporada();
-    cargarDia("friday");
-});
+    try {
+        const respuesta = await fetch(`https://api.jikan.moe/v4/anime/${idAnime}/full`);
+        const data = (await respuesta.json()).data;
+
+        const sinopsisLimpia = data.synopsis ? data.synopsis.split('[Written by')[0].trim() : "Sinopsis no disponible.";
+        const temporada = data.season ? `Temporada ${traduccionesTemporada[data.season] || data.season}` : "Actual";
+        const estado = traduccionesEstado[data.status] || data.status;
+
+        document.getElementById('detalle-imagen').src = data.images.jpg.large_image_url;
+        document.getElementById('detalle-titulo').innerText = data.title;
+        document.getElementById('detalle-meta').innerText = `${data.type || 'TV'} • ${data.year || 'N/A'} • ${temporada} • ${estado}`;
+        document.getElementById('detalle-sinopsis').innerText = sinopsisLimpia;
+        document.getElementById('detalle-rating-valor').innerText = data.score ? data.score.toFixed(2) : "N/A";
+
+        if (data.genres && data.genres.length > 0) {
+            document.getElementById('detalle-tags').innerHTML = data.genres.map(g => `<span class="tag">${g.name}</span>`).join('');
+        } else {
+            document.getElementById('detalle-tags').innerHTML = '<span class="tag">Sin Clasificar</span>';
+        }
+    } catch (error) {
+        document.getElementById('detalle-titulo').innerText = "Error de Sistema";
+    }
+}
+
+// INICIO DEL SISTEMA
+window.onload = () => {
+    cambiarVista('vista-inicio');
+    iniciarHeroRotativo(); // Despierta el carrusel dinámico
+};

@@ -9,123 +9,115 @@
 </head>
 <body>
 
-    <h1 id="logo-dinamico" class="logo-animado">AniSync<br><span>Toshokan</span></h1>
+    <!-- Lienzo Sakura Nocturno -->
+    <div class="fondo-tecnologico"></div>
 
+    <!-- Header Fijo Moderno -->
     <header class="navbar">
-        <div style="width: 200px;"></div> 
-        <nav aria-label="Navegación principal">
-            <button onclick="cambiarVista('vista-inicio')">Inicio</button>
-            <button onclick="cambiarVista('vista-directorio')">Directorio</button>
-            <button onclick="cambiarVista('vista-calendario')">Horarios</button>
-            <button onclick="cambiarVista('vista-boveda')" class="btn-boveda">Mi Bóveda 🤍</button>
-        </nav>
+        <div class="nav-izq-centro">
+            <h1 class="logo-pequeno" onclick="cambiarVista('vista-inicio')">AniSync<span>Toshokan</span></h1>
+            <nav class="enlaces-menu">
+                <button onclick="cambiarVista('vista-inicio')">Inicio</button>
+                <button onclick="cambiarVista('vista-directorio')">Catálogo</button>
+                <button onclick="cambiarVista('vista-calendario')">Horarios</button>
+                <button onclick="cambiarVista('vista-boveda')">Mi Bóveda 🤍</button>
+            </nav>
+        </div>
+        
+        <div class="nav-derecha">
+            <input id="buscar" type="search" placeholder="Buscar anime..." autocomplete="off">
+            <div id="lista-resultados" class="dropdown-lista glass-panel-dark"></div>
+        </div>
     </header>
 
     <main id="contenedor-vistas">
         
+        <!-- VISTA INICIO (Hero Dinámico y Rotativo) -->
         <section id="vista-inicio" class="vista activa">
-            
-            <div id="zona-busqueda-interactiva" class="zona-busqueda">
-                <p class="hero-subtitulo" id="subtitulo-hero">Sistema de Sincronización de Base de Datos</p>
-                <label for="buscar" class="sr-only">Buscar anime por título o palabra clave</label>
-                <input id="buscar" type="search" placeholder="Inicia tu búsqueda..." autocomplete="off" aria-label="Buscar anime">
-                
-                <div class="contenedor-cascada">
-                    <div class="columna-lista glass-panel-dark" id="lista-resultados" role="listbox" aria-label="Resultados de búsqueda"></div>
+            <!-- Agregamos ID 'hero-contenedor' para la animación de Fade -->
+            <div class="tarjeta-inmersiva" id="hero-contenedor">
+                <img id="hero-imagen" src="https://via.placeholder.com/280x420/111827/cbd5e1?text=Sincronizando..." alt="Portada Anime" class="portada-inmersiva">
+                <div class="info-inmersiva">
+                    <h2 id="hero-titulo" class="titulo-inmersivo">Cargando Cartelera...</h2>
+                    <p id="hero-meta" class="meta-inmersiva">Conectando a los servidores</p>
+                    <div id="hero-tags" class="tags-inmersivos">
+                        <span class="tag">Procesando</span>
+                    </div>
+                    <p id="hero-sinopsis" class="sinopsis-inmersiva">Buscando los animes más populares de esta temporada para ti...</p>
                     
-                    <div class="columna-preview glass-panel-dark" id="panel-lateral-preview" role="region" aria-label="Vista previa de anime"></div>
+                    <div class="acciones-inmersivas">
+                        <div class="rating-box">
+                            <span class="estrella">⭐</span>
+                            <span id="hero-rating" class="puntaje">0.0</span>
+                            <span class="votos">MAL RATING</span>
+                        </div>
+                        <button id="btn-hero-detalles" class="btn-principal">Ver Detalles</button>
+                    </div>
                 </div>
             </div>
-
         </section>
 
+        <!-- VISTA CATÁLOGO -->
         <section id="vista-directorio" class="vista">
-            <div class="section-header-limpio">
-                <h2>Directorio <span>de Temporada</span><span class="punto-neon">.</span></h2>
+            <h2 class="titulo-pagina">Catálogo <span>Completo</span></h2>
+            <div id="grid-directorio" class="grid-catalogo">
+                <!-- Se inyecta por JS -->
             </div>
-            <div class="galeria-grid" id="galeria-temporada" role="grid" aria-label="Galería de animes de temporada"></div>
         </section>
 
+        <!-- VISTA HORARIOS -->
         <section id="vista-calendario" class="vista">
-            <div class="section-header-limpio">
-                <h2>Horarios <span>de Emisión</span><span class="punto-neon">.</span></h2>
-                <nav id="menu-dias" style="margin-top: 15px;" aria-label="Filtro por día de la semana">
-                    <button class="dia-btn" data-dia="monday">Lunes</button>
-                    <button class="dia-btn" data-dia="tuesday">Martes</button>
-                    <button class="dia-btn" data-dia="wednesday">Miércoles</button>
-                    <button class="dia-btn" data-dia="thursday">Jueves</button>
-                    <button class="dia-btn activo-dia" data-dia="friday">Viernes</button>
-                    <button class="dia-btn" data-dia="saturday">Sábado</button>
-                    <button class="dia-btn" data-dia="sunday">Domingo</button>
-                </nav>
+            <h2 class="titulo-pagina">Horarios <span>de Emisión</span></h2>
+            
+            <div class="menu-dias">
+                <button class="filtro-btn activo" onclick="cargarHorario('monday', this)">Lunes</button>
+                <button class="filtro-btn" onclick="cargarHorario('tuesday', this)">Martes</button>
+                <button class="filtro-btn" onclick="cargarHorario('wednesday', this)">Miércoles</button>
+                <button class="filtro-btn" onclick="cargarHorario('thursday', this)">Jueves</button>
+                <button class="filtro-btn" onclick="cargarHorario('friday', this)">Viernes</button>
+                <button class="filtro-btn" onclick="cargarHorario('saturday', this)">Sábado</button>
+                <button class="filtro-btn" onclick="cargarHorario('sunday', this)">Domingo</button>
             </div>
-            <div class="galeria-grid" id="galeria-calendario" role="grid" aria-label="Galería de animes por horario"></div>
+            
+            <div id="grid-horarios" class="grid-catalogo">
+                <!-- Se inyecta por JS -->
+            </div>
         </section>
 
+        <!-- VISTA DETALLES (Ficha individual del Anime) -->
+        <section id="vista-detalles" class="vista">
+            <button class="btn-volver" onclick="volverDeDetalles()">← Volver atrás</button>
+            
+            <div class="tarjeta-inmersiva glass-panel-dark">
+                <img id="detalle-imagen" src="" alt="Portada" class="portada-inmersiva">
+                <div class="info-inmersiva">
+                    <h2 id="detalle-titulo" class="titulo-inmersivo">Cargando...</h2>
+                    <p id="detalle-meta" class="meta-inmersiva">Conectando...</p>
+                    <div id="detalle-tags" class="tags-inmersivos">
+                        <span class="tag">Cargando</span>
+                    </div>
+                    <p id="detalle-sinopsis" class="sinopsis-inmersiva">Desencriptando datos de los servidores...</p>
+                    
+                    <div class="acciones-inmersivas">
+                        <div class="rating-box">
+                            <span class="estrella">⭐</span>
+                            <span id="detalle-rating-valor" class="puntaje">0.0</span>
+                            <span class="votos">MAL RATING</span>
+                        </div>
+                        <button class="btn-secundario">➕ Agregar a Bóveda</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA BÓVEDA -->
         <section id="vista-boveda" class="vista">
-            <div class="section-header-limpio">
-                <h2>Mi <span>Bóveda</span><span class="punto-neon">.</span></h2>
-                <p style="color: var(--texto-mutado); font-size: 0.9rem; margin-top: 5px;">Conectado a Python y MongoDB</p>
-            </div>
+            <h2 class="titulo-pagina">Mi <span>Bóveda</span></h2>
             <div class="boveda-vacia glass-panel-dark">
-                <span style="font-size: 3rem;">🛡️</span>
-                <h3>Bóveda Segura</h3>
-                <p>Esperando conexión con el backend.</p>
+                🛡️ Conexión MongoDB establecida. Aquí aparecerán tus animes guardados.
             </div>
         </section>
-
     </main>
-
-    <footer class="footer-premium">
-        <div class="footer-content">
-            <div class="footer-section">
-                <h4>AniSync Toshokan</h4>
-                <p>Sistema Premium de Sincronización de Anime</p>
-            </div>
-            <div class="footer-section">
-                <h4>Tecnologías</h4>
-                <p>HTML5 | CSS3 | JavaScript | APIs REST</p>
-            </div>
-            <div class="footer-section">
-                <h4>APIs</h4>
-                <p><a href="https://jikan.moe" target="_blank" rel="noopener">Jikan</a> | <a href="https://mymemory.translated.net" target="_blank" rel="noopener">MyMemory</a></p>
-            </div>
-            <div class="footer-section">
-                <h4>Proyecto</h4>
-                <p><a href="https://github.com/WindersonCastrillo/mi-galeria-web" target="_blank" rel="noopener">GitHub</a> | Desafío Front End TI3V31</p>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p>&copy; 2026 AniSync Toshokan. Hecho con 💜 por Winderson Castrillo</p>
-        </div>
-    </footer>
-
-    <div id="modal-detalle" class="modal-oculto">
-        <div class="modal-contenido glass-panel-dark">
-            <span class="cerrar-modal" id="btn-cerrar-modal" role="button" tabindex="0" aria-label="Cerrar">&times;</span>
-            <div class="modal-grid">
-                <div class="modal-poster">
-                    <img id="modal-img" src="" alt="Póster del anime">
-                    <button class="btn-guardar-full" id="btn-modal-guardar" aria-label="Guardar anime en bóveda personal">🤍 Guardar en Bóveda</button>
-                </div>
-                <div class="modal-info">
-                    <div class="titulo-container">
-                        <h2 id="modal-titulo">Título del Anime</h2>
-                    </div>
-                    <div class="modal-tags" id="modal-tags" aria-label="Géneros del anime"></div>
-                    <div class="modal-stats-box">
-                        <p>⭐ <span id="modal-score" style="color: #b388ff; font-weight: bold;"></span></p>
-                        <p>🎬 <span id="modal-eps"></span> episodios</p>
-                        <p>📅 <span id="modal-emision"></span></p>
-                    </div>
-                    <div class="modal-sinopsis-container">
-                        <h3>Sinopsis <span id="indicador-traduccion" class="badge-trad"></span></h3>
-                        <p id="modal-sinopsis" class="texto-limpio">Cargando...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script src="js/app.js"></script>
 </body>
