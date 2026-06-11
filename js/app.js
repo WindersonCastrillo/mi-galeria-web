@@ -18,8 +18,11 @@ const botonesDias = document.querySelectorAll(".dia-btn");
 let animeModalActual = null;
 const RENDER_API_URL = "https://asuna-cloudcore.onrender.com/favoritos"; 
 
+// Historial de búsquedas en localStorage
+let historialBusquedas = JSON.parse(localStorage.getItem('historialBusquedas')) || [];
+
 // ==========================================
-// CONTROL DE LIENZOS
+// CONTROL DE LIENZOS (VISTAS SPA)
 // ==========================================
 function cambiarVista(idVista) {
     cerrarBuscador();
@@ -59,15 +62,24 @@ inputBuscar.addEventListener("input", (e) => {
         panelPreview.classList.remove("visible"); 
         
         try {
-            const res = await fetch(`https://api.jikan.moe/v4/anime?q=${textoBusqueda}&sfw`);
+            const res = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(textoBusqueda)}&sfw`);
+            
+            // Validación robusta de respuesta HTTP
+            if (!res.ok) {
+                throw new Error(`Error HTTP ${res.status}: ${res.statusText}`);
+            }
+            
             const json = await res.json();
             const resultados = json.data;
             
             listaResultados.innerHTML = "";
             if (!resultados || resultados.length === 0) {
-                listaResultados.innerHTML = "<div style='padding:20px;text-align:center;'>No hay registros.</div>"; 
+                listaResultados.innerHTML = "<div style='padding:20px;text-align:center; color: #94a3b8;'>❌ No hay registros para: <strong>" + textoBusqueda + "</strong></div>"; 
                 return;
             }
+
+            // Guardar búsqueda en historial
+            guardarBusqueda(textoBusqueda);
 
             resultados.slice(0, 8).forEach(anime => {
                 if (!anime.title || !anime.images?.jpg?.large_image_url) return;
@@ -85,8 +97,9 @@ inputBuscar.addEventListener("input", (e) => {
 
                 const item = document.createElement("div");
                 item.className = "item-busqueda";
+                item.role = "option";
                 item.innerHTML = `
-                    <img src="${anime.images.jpg.small_image_url || anime.images.jpg.image_url}">
+                    <img src="${anime.images.jpg.small_image_url || anime.images.jpg.image_url}" alt="${anime.title} póster" loading="lazy">
                     <div class="info-mini">
                         <h4>${anime.title}</h4>
                         ${paragraph}
@@ -106,16 +119,31 @@ inputBuscar.addEventListener("input", (e) => {
 
                 listaResultados.appendChild(item);
             });
-        } catch (error) { console.error(error); }
+        } catch (error) { 
+            console.error('Error en búsqueda:', error);
+            listaResultados.innerHTML = `<div style='padding:20px; text-align:center; color: #ff6b6b;'>
+                ⚠️ Error al buscar<br>
+                <small style="color: #94a3b8;">${error.message}</small>
+            </div>`; 
+        }
     }, 400); 
 });
+
+// Guardar búsqueda en historial con localStorage
+function guardarBusqueda(termino) {
+    if (!historialBusquedas.includes(termino)) {
+        historialBusquedas.unshift(termino);
+        if (historialBusquedas.length > 10) historialBusquedas.pop();
+        localStorage.setItem('historialBusquedas', JSON.stringify(historialBusquedas));
+    }
+}
 
 function mostrarPreviewCascada(anime) {
     panelPreview.classList.add("visible");
     const sinopsisCorta = anime.synopsis ? anime.synopsis : "Sin información disponible en la base de datos.";
     
     panelPreview.innerHTML = `
-        <img class="preview-imagen" src="${anime.images.jpg.large_image_url}" alt="${anime.title}">
+        <img class="preview-imagen" src="${anime.images.jpg.large_image_url}" alt="${anime.title} póster completo" loading="lazy">
         <h3 class="preview-titulo">${anime.title}</h3>
         <div class="preview-texto-fade">
             <p>${sinopsisCorta}</p>
@@ -142,21 +170,41 @@ function cerrarBuscador() {
 async function cargarTemporada() {
     try {
         const res = await fetch("https://api.jikan.moe/v4/seasons/now?sfw");
+        
+        if (!res.ok) {
+            throw new Error(`Error HTTP ${res.status}: No se pudo cargar la temporada`);
+        }
+        
         const json = await res.json();
         const animesUnicos = json.data.filter((anime, index, self) => index === self.findIndex((a) => a.mal_id === anime.mal_id));
         galeriaTemporada.innerHTML = ""; 
         renderizarTarjetas(animesUnicos.slice(0, 24), galeriaTemporada);
-    } catch (error) { console.error(error); }
+    } catch (error) { 
+        console.error('Error cargando temporada:', error);
+        galeriaTemporada.innerHTML = `<div style='grid-column: 1/-1; text-align: center; padding: 40px; color: #ff6b6b;'>
+            ⚠️ Error al cargar temporada: ${error.message}
+        </div>`;
+    }
 }
 
 async function cargarDia(dia) {
     try {
         const res = await fetch(`https://api.jikan.moe/v4/schedules?filter=${dia}&sfw`);
+        
+        if (!res.ok) {
+            throw new Error(`Error HTTP ${res.status}: No se pudo cargar el horario`);
+        }
+        
         const json = await res.json();
         const animesUnicos = json.data.filter((anime, index, self) => index === self.findIndex((a) => a.mal_id === anime.mal_id));
         galeriaCalendario.innerHTML = "";
         renderizarTarjetas(animesUnicos, galeriaCalendario);
-    } catch (error) { console.error(error); }
+    } catch (error) { 
+        console.error('Error cargando día:', error);
+        galeriaCalendario.innerHTML = `<div style='grid-column: 1/-1; text-align: center; padding: 40px; color: #ff6b6b;'>
+            ⚠️ Error al cargar horario: ${error.message}
+        </div>`;
+    }
 }
 
 function renderizarTarjetas(animes, contenedor) {
@@ -166,7 +214,7 @@ function renderizarTarjetas(animes, contenedor) {
         const tarjeta = document.createElement("article");
         tarjeta.className = "tarjeta";
         tarjeta.innerHTML = `
-            <img src="${anime.images.jpg.large_image_url}" loading="lazy">
+            <img src="${anime.images.jpg.large_image_url}" alt="${anime.title} póster" loading="lazy">
             <div class="tarjeta-info">
                 <h3>${anime.title}</h3>
                 <p style="color: var(--acento); font-size: 0.85rem; font-weight: 600;">${score}</p>
@@ -184,6 +232,7 @@ async function abrirModal(anime) {
     animeModalActual = anime; 
     
     document.getElementById("modal-img").src = anime.images.jpg.large_image_url;
+    document.getElementById("modal-img").alt = `${anime.title} - Póster oficial`;
     document.getElementById("modal-titulo").textContent = anime.title;
     document.getElementById("modal-score").textContent = anime.score || 'N/A';
     document.getElementById("modal-eps").textContent = anime.episodes || '?';
@@ -198,7 +247,9 @@ async function abrirModal(anime) {
     contenedorTags.innerHTML = "";
     if (anime.genres) {
         anime.genres.forEach(g => {
-            const span = document.createElement("span"); span.textContent = g.name; contenedorTags.appendChild(span);
+            const span = document.createElement("span"); 
+            span.textContent = g.name; 
+            contenedorTags.appendChild(span);
         });
     }
 
@@ -211,6 +262,11 @@ async function abrirModal(anime) {
         try {
             const textoLimpio = anime.synopsis.substring(0, 499);
             const resTrad = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(textoLimpio)}&langpair=en|es`);
+            
+            if (!resTrad.ok) {
+                throw new Error(`Error en traducción HTTP ${resTrad.status}`);
+            }
+            
             const dataTrad = await resTrad.json();
             
             if (dataTrad.responseData && dataTrad.responseData.translatedText) {
@@ -219,7 +275,10 @@ async function abrirModal(anime) {
             } else {
                 indicador.textContent = "Inglés";
             }
-        } catch (e) { indicador.textContent = "Inglés"; }
+        } catch (e) { 
+            console.error('Error en traducción:', e);
+            indicador.textContent = "Inglés"; 
+        }
     } else {
         pSinopsis.textContent = "No hay sinopsis disponible.";
         indicador.textContent = "";
@@ -229,11 +288,26 @@ async function abrirModal(anime) {
 }
 
 btnCerrarModal.addEventListener("click", () => modalDetalle.classList.remove("modal-visible"));
+btnCerrarModal.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+        modalDetalle.classList.remove("modal-visible");
+    }
+});
+
 window.addEventListener("click", (e) => {
     if (e.target === modalDetalle) modalDetalle.classList.remove("modal-visible");
 });
 
-// Guardado Mongo
+// Cerrar modal con ESC
+window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modalDetalle.classList.contains("modal-visible")) {
+        modalDetalle.classList.remove("modal-visible");
+    }
+});
+
+// ==========================================
+// GUARDADO EN MONGODB (Favoritos)
+// ==========================================
 btnModalGuardar.addEventListener("click", async () => {
     if (!animeModalActual) return;
     btnModalGuardar.textContent = "⏳ Sincronizando...";
@@ -248,16 +322,22 @@ btnModalGuardar.addEventListener("click", async () => {
             episodios: animeModalActual.episodes,
             horario_emision: animeModalActual.broadcast ? animeModalActual.broadcast : null 
         };
+        
         const res = await fetch(RENDER_API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(datosAnime)
         });
-        if (!res.ok) throw new Error(`Error HTTP`);
+        
+        if (!res.ok) {
+            throw new Error(`Error HTTP ${res.status}: No se pudo guardar el anime`);
+        }
+        
         btnModalGuardar.textContent = "✅ Asegurado en la Bóveda";
         btnModalGuardar.style.background = "#10b981";
         btnModalGuardar.style.color = "#fff";
     } catch (error) {
+        console.error('Error al guardar:', error);
         btnModalGuardar.textContent = "❌ Error de conexión";
         setTimeout(() => { 
             btnModalGuardar.textContent = "🤍 Guardar en Bóveda"; 
