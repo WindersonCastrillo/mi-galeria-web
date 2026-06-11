@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000'; // Cuando Render nos dé el link, cambiaremos esto aquí
+const API_URL = 'https://anisync-backend-bpfv.onrender.com'; // Cuando Render nos dé el link, cambiaremos esto aquí
 
 let temporizadorBusqueda;
 let vistaAnterior = 'vista-inicio'; 
