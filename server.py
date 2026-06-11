@@ -8,7 +8,7 @@ CORS(app)
 
 # Conexión a MongoDB (Apunta a tu base de datos local por defecto)
 # Si usas MongoDB Atlas, reemplaza esta URL por tu URI de conexión
-cliente = MongoClient('mongodb://localhost:27017/') 
+cliente = MongoClient('mongodb+srv://windersoncastrillo_db_user:Kiri27102.@sao.nj24yy6.mongodb.net/?appName=SAO')
 db = cliente['anisync_db']
 coleccion_boveda = db['boveda']
 

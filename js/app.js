@@ -1,3 +1,5 @@
+const API_URL = 'http://localhost:5000'; // Cuando Render nos dé el link, cambiaremos esto aquí
+
 let temporizadorBusqueda;
 let vistaAnterior = 'vista-inicio'; 
 let catalogoCargado = false; 
@@ -11,6 +13,7 @@ let intervaloHero;
 const traduccionesTemporada = { "spring": "Primavera", "summer": "Verano", "fall": "Otoño", "winter": "Invierno" };
 const traduccionesEstado = { "Currently Airing": "En emisión", "Finished Airing": "Finalizado", "Not yet aired": "Próximamente" };
 
+// Filtro anti-clones
 function eliminarDuplicados(animesArray) {
     const vistos = new Set();
     return animesArray.filter(anime => {
@@ -20,6 +23,7 @@ function eliminarDuplicados(animesArray) {
     });
 }
 
+// 1. Navegación SPA
 function cambiarVista(idVista) {
     if(idVista !== 'vista-detalles') vistaAnterior = idVista; 
 
@@ -29,11 +33,15 @@ function cambiarVista(idVista) {
     document.getElementById('buscar').value = ''; 
     document.getElementById('lista-resultados').style.display = 'none';
 
+    // Cargas Automáticas
     if (idVista === 'vista-directorio' && !catalogoCargado) {
         cargarDirectorio();
     } else if (idVista === 'vista-calendario' && !horariosCargados) {
         cargarHorario('monday', document.querySelector('.menu-dias button'));
         horariosCargados = true;
+    } else if (idVista === 'vista-boveda') {
+        // Carga la bóveda cada vez que entras para asegurar que esté actualizada
+        cargarBoveda();
     }
 }
 
@@ -41,7 +49,9 @@ function volverDeDetalles() {
     cambiarVista(vistaAnterior);
 }
 
-// Hero Rotativo
+// ==========================================
+// 2. HERO DINÁMICO (Animación y Rotación)
+// ==========================================
 async function iniciarHeroRotativo() {
     try {
         const respuesta = await fetch('https://api.jikan.moe/v4/top/anime?filter=airing&limit=8');
@@ -88,7 +98,9 @@ function actualizarUIHero() {
     }, 500); 
 }
 
-// Catálogo
+// ==========================================
+// 3. CATÁLOGO INFALIBLE
+// ==========================================
 async function cargarDirectorio() {
     const grid = document.getElementById('grid-directorio');
     grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: var(--acento);">Sincronizando catálogo general...</p>';
@@ -109,6 +121,7 @@ async function cargarDirectorio() {
                 </div>
             </div>
         `).join('');
+        
         catalogoCargado = true;
     } catch (error) {
         grid.innerHTML = '<p style="grid-column: 1 / -1; color: #ef4444; text-align: center;">Error al cargar el catálogo.</p>';
@@ -116,7 +129,9 @@ async function cargarDirectorio() {
     }
 }
 
-// Horarios
+// ==========================================
+// 4. HORARIOS
+// ==========================================
 async function cargarHorario(dia, btnElement) {
     document.querySelectorAll('.menu-dias .filtro-btn').forEach(btn => btn.classList.remove('activo'));
     btnElement.classList.add('activo');
@@ -150,7 +165,9 @@ async function cargarHorario(dia, btnElement) {
     }
 }
 
-// Buscador
+// ==========================================
+// 5. BUSCADOR
+// ==========================================
 document.getElementById('buscar').addEventListener('input', (e) => {
     const query = e.target.value.trim();
     const lista = document.getElementById('lista-resultados');
@@ -186,7 +203,9 @@ document.getElementById('buscar').addEventListener('input', (e) => {
     }
 });
 
-// Detalles y Conexión con MongoDB
+// ==========================================
+// 6. DETALLES Y CONEXIÓN BÓVEDA
+// ==========================================
 async function abrirDetalles(idAnime) {
     document.getElementById('lista-resultados').style.display = 'none'; 
     document.getElementById('buscar').value = ''; 
@@ -238,14 +257,15 @@ async function abrirDetalles(idAnime) {
     }
 }
 
-// Función asíncrona para hablar con el Backend Python
+// Función para ENVIAR a MongoDB
 async function guardarEnBoveda() {
     const btn = document.querySelector('.btn-secundario');
     btn.innerText = "⏳ Guardando...";
     btn.disabled = true;
 
     try {
-        const respuesta = await fetch('http://localhost:5000/api/guardar', {
+        // Usamos la variable API_URL que configuramos arriba
+        const respuesta = await fetch(`${API_URL}/api/guardar`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(animeActualParaBoveda)
@@ -273,6 +293,59 @@ async function guardarEnBoveda() {
         btn.style.color = "white";
         btn.disabled = false;
     }, 3000);
+}
+
+// Función para TRAER desde MongoDB
+async function cargarBoveda() {
+    const contenedor = document.querySelector('#vista-boveda');
+    
+    // Mostramos estado de carga
+    contenedor.innerHTML = `
+        <h2 class="titulo-pagina">Mi <span>Bóveda</span></h2>
+        <div class="boveda-vacia glass-panel-dark" style="padding: 40px; text-align: center; color: var(--acento);">
+            📡 Conectando con los servidores de tu base de datos...
+        </div>`;
+    
+    try {
+        // Usamos la variable API_URL
+        const respuesta = await fetch(`${API_URL}/api/boveda`);
+        const animesGuardados = await respuesta.json();
+
+        if (animesGuardados.length === 0) {
+            contenedor.innerHTML = `
+                <h2 class="titulo-pagina">Mi <span>Bóveda</span></h2>
+                <div class="boveda-vacia glass-panel-dark" style="padding: 40px; text-align: center;">
+                    🛡️ Tu bóveda está vacía. ¡Ve a explorar el catálogo!
+                </div>`;
+            return;
+        }
+
+        let htmlGrid = `<h2 class="titulo-pagina">Mi <span>Bóveda</span></h2>
+                        <div class="grid-catalogo">`;
+                        
+        htmlGrid += animesGuardados.map(a => `
+            <div class="tarjeta-anime" onclick="abrirDetalles(${a.mal_id})">
+                <div class="contenedor-portada">
+                    <img src="${a.image_url}" alt="${a.title}">
+                    <span class="etiqueta-flotante" style="background: var(--acento); color: #000;">Guardado</span>
+                </div>
+                <div class="info-externa">
+                    <p title="${a.title}">${a.title}</p>
+                </div>
+            </div>
+        `).join('');
+        
+        htmlGrid += `</div>`;
+        contenedor.innerHTML = htmlGrid;
+
+    } catch (error) {
+        console.error("Error al cargar la bóveda:", error);
+        contenedor.innerHTML = `
+            <h2 class="titulo-pagina">Mi <span>Bóveda</span></h2>
+            <div class="boveda-vacia glass-panel-dark" style="padding: 40px; text-align: center; color: #ef4444;">
+                ❌ Servidor apagado. No se pudo conectar con MongoDB.
+            </div>`;
+    }
 }
 
 // INICIO DEL SISTEMA
