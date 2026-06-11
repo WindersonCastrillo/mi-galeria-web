@@ -1,11 +1,9 @@
 let temporizadorBusqueda;
-let vistaAnterior = 'vista-inicio'; // Para saber a dónde volver desde detalles
-
-// Banderas de control (Para evitar que cargue vacío o repita llamadas)
+let vistaAnterior = 'vista-inicio'; 
 let catalogoCargado = false; 
 let horariosCargados = false;
+let animeActualParaBoveda = {}; // Almacena el anime actual para enviarlo a Python
 
-// Variables para el Hero Dinámico
 let heroAnimes = [];
 let indiceHeroActual = 0;
 let intervaloHero;
@@ -13,7 +11,6 @@ let intervaloHero;
 const traduccionesTemporada = { "spring": "Primavera", "summer": "Verano", "fall": "Otoño", "winter": "Invierno" };
 const traduccionesEstado = { "Currently Airing": "En emisión", "Finished Airing": "Finalizado", "Not yet aired": "Próximamente" };
 
-// Filtro anti-clones
 function eliminarDuplicados(animesArray) {
     const vistos = new Set();
     return animesArray.filter(anime => {
@@ -23,11 +20,8 @@ function eliminarDuplicados(animesArray) {
     });
 }
 
-// 1. Navegación SPA con Banderas Seguras
 function cambiarVista(idVista) {
-    if(idVista !== 'vista-detalles') {
-        vistaAnterior = idVista; // Guardamos el rastro para el botón "Volver"
-    }
+    if(idVista !== 'vista-detalles') vistaAnterior = idVista; 
 
     document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
     document.getElementById(idVista).classList.add('activa');
@@ -35,7 +29,6 @@ function cambiarVista(idVista) {
     document.getElementById('buscar').value = ''; 
     document.getElementById('lista-resultados').style.display = 'none';
 
-    // Cargas Automáticas controladas por banderas
     if (idVista === 'vista-directorio' && !catalogoCargado) {
         cargarDirectorio();
     } else if (idVista === 'vista-calendario' && !horariosCargados) {
@@ -48,21 +41,15 @@ function volverDeDetalles() {
     cambiarVista(vistaAnterior);
 }
 
-// ==========================================
-// 2. HERO DINÁMICO (Animación y Rotación)
-// ==========================================
+// Hero Rotativo
 async function iniciarHeroRotativo() {
     try {
-        // Pedimos los 8 animes más populares en emisión ahora
         const respuesta = await fetch('https://api.jikan.moe/v4/top/anime?filter=airing&limit=8');
         const data = await respuesta.json();
-        
-        // Filtramos para asegurarnos que tengan sinopsis e imagen
         heroAnimes = eliminarDuplicados(data.data).filter(a => a.synopsis && a.images.jpg.large_image_url);
         
         if (heroAnimes.length > 0) {
-            actualizarUIHero(); // Mostrar el primero
-            // Programar el cambio cada 7 segundos
+            actualizarUIHero();
             intervaloHero = setInterval(cambiarHeroSiguiente, 7000);
         }
     } catch (error) {
@@ -79,10 +66,8 @@ function actualizarUIHero() {
     const anime = heroAnimes[indiceHeroActual];
     const contenedor = document.getElementById('hero-contenedor');
     
-    // 1. Inicia el desvanecimiento
     contenedor.classList.add('fade-out');
 
-    // 2. Espera medio segundo (lo que dura el CSS) para cambiar los textos
     setTimeout(() => {
         const sinopsisLimpia = anime.synopsis.split('[Written by')[0].trim();
         const temporada = anime.season ? `Temporada ${traduccionesTemporada[anime.season] || anime.season}` : "Actualidad";
@@ -98,17 +83,12 @@ function actualizarUIHero() {
             document.getElementById('hero-tags').innerHTML = anime.genres.slice(0,4).map(g => `<span class="tag">${g.name}</span>`).join('');
         }
 
-        // Conectar el botón para que abra sus detalles
         document.getElementById('btn-hero-detalles').onclick = () => abrirDetalles(anime.mal_id);
-
-        // 3. Vuelve a aparecer la tarjeta con los nuevos datos
         contenedor.classList.remove('fade-out');
     }, 500); 
 }
 
-// ==========================================
-// 3. CATÁLOGO INFALIBLE
-// ==========================================
+// Catálogo
 async function cargarDirectorio() {
     const grid = document.getElementById('grid-directorio');
     grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: var(--acento);">Sincronizando catálogo general...</p>';
@@ -129,18 +109,14 @@ async function cargarDirectorio() {
                 </div>
             </div>
         `).join('');
-        
-        catalogoCargado = true; // Sellamos la bandera
+        catalogoCargado = true;
     } catch (error) {
         grid.innerHTML = '<p style="grid-column: 1 / -1; color: #ef4444; text-align: center;">Error al cargar el catálogo.</p>';
         catalogoCargado = false;
     }
 }
 
-// ==========================================
-// RESTO DE FUNCIONES (Horarios, Buscador y Detalles)
-// ==========================================
-
+// Horarios
 async function cargarHorario(dia, btnElement) {
     document.querySelectorAll('.menu-dias .filtro-btn').forEach(btn => btn.classList.remove('activo'));
     btnElement.classList.add('activo');
@@ -210,7 +186,7 @@ document.getElementById('buscar').addEventListener('input', (e) => {
     }
 });
 
-// Detalles Individuales
+// Detalles y Conexión con MongoDB
 async function abrirDetalles(idAnime) {
     document.getElementById('lista-resultados').style.display = 'none'; 
     document.getElementById('buscar').value = ''; 
@@ -242,13 +218,65 @@ async function abrirDetalles(idAnime) {
         } else {
             document.getElementById('detalle-tags').innerHTML = '<span class="tag">Sin Clasificar</span>';
         }
+
+        // Empaquetamos los datos para enviarlos a Python / MongoDB
+        animeActualParaBoveda = {
+            mal_id: data.mal_id,
+            title: data.title,
+            image_url: data.images.jpg.large_image_url,
+            type: data.type,
+            year: data.year,
+            status: estado,
+            score: data.score
+        };
+
+        // Activamos el botón de guardar
+        document.querySelector('.btn-secundario').onclick = guardarEnBoveda;
+
     } catch (error) {
         document.getElementById('detalle-titulo').innerText = "Error de Sistema";
     }
 }
 
+// Función asíncrona para hablar con el Backend Python
+async function guardarEnBoveda() {
+    const btn = document.querySelector('.btn-secundario');
+    btn.innerText = "⏳ Guardando...";
+    btn.disabled = true;
+
+    try {
+        const respuesta = await fetch('http://localhost:5000/api/guardar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(animeActualParaBoveda)
+        });
+
+        const resultado = await respuesta.json();
+
+        if (resultado.status === 'ok') {
+            btn.innerText = "✔️ Guardado en Bóveda";
+            btn.style.backgroundColor = "#10b981"; 
+            btn.style.color = "#000";
+        } else if (resultado.status === 'duplicado') {
+            btn.innerText = "⚠️ Ya está en tu Bóveda";
+            btn.style.backgroundColor = "#fbbf24"; 
+            btn.style.color = "#000";
+        }
+    } catch (error) {
+        console.error("Error al conectar con Python:", error);
+        btn.innerText = "❌ Servidor Apagado";
+    }
+
+    setTimeout(() => {
+        btn.innerText = "➕ Agregar a Bóveda";
+        btn.style.backgroundColor = "rgba(255,255,255,0.1)";
+        btn.style.color = "white";
+        btn.disabled = false;
+    }, 3000);
+}
+
 // INICIO DEL SISTEMA
 window.onload = () => {
     cambiarVista('vista-inicio');
-    iniciarHeroRotativo(); // Despierta el carrusel dinámico
+    iniciarHeroRotativo();
 };
