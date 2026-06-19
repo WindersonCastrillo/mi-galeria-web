@@ -65,6 +65,15 @@ function cambiarVista(idVista) {
     document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
     document.getElementById(idVista).classList.add('activa');
     
+    // Actualiza el estado activo de la barra de navegación inferior
+    document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
+        if (btn.dataset.vista === idVista) {
+            btn.classList.add('activo');
+        } else {
+            btn.classList.remove('activo');
+        }
+    });
+
     document.getElementById('buscar').value = ''; 
     document.getElementById('lista-resultados').style.display = 'none';
 
@@ -535,21 +544,12 @@ function iniciarUtilidadesUI() {
 
     btnScroll.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-    // Lógica para el menú móvil
-    const btnMenuMovil = document.getElementById('btn-menu-movil');
-    const overlayMovil = document.getElementById('menu-movil-overlay');
-
-    btnMenuMovil.addEventListener('click', () => {
-        btnMenuMovil.classList.toggle('abierto');
-        overlayMovil.classList.toggle('abierto');
+    // Lógica para la barra de navegación inferior
+    document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            cambiarVista(btn.dataset.vista);
+        });
     });
-}
-
-function cerrarMenuMovil() {
-    const btnMenuMovil = document.getElementById('btn-menu-movil');
-    const overlayMovil = document.getElementById('menu-movil-overlay');
-    btnMenuMovil.classList.remove('abierto');
-    overlayMovil.classList.remove('abierto');
 }
 
 function mostrarToast(mensaje, tipo = 'info') {
