@@ -173,70 +173,84 @@ img { color: transparent; }
 }
 
 
-/* --- SMARTPHONES (S24) - DISEÑO EDGE-TO-EDGE INAMOVIBLE --- */
+/* --- SMARTPHONES (S24) - DISEÑO EDGE-TO-EDGE (ESTÁTICO Y CUADRADO) --- */
 @media (max-width: 480px) {
-    /* Navbar Transparente */
+    /* Bloqueo estricto del navegador móvil */
+    body { overscroll-behavior-y: none; }
+
+    /* Navbar Flotante */
     .navbar {
         position: fixed;
         background: linear-gradient(to bottom, rgba(11,15,25,0.95) 0%, rgba(11,15,25,0) 100%);
         border-bottom: none;
         padding: 15px 15px;
-        z-index: 20000 !important; /* Total seguridad de superposición */
+        z-index: 20000 !important; 
     }
     .navbar::after { display: none; }
     .nav-derecha input { width: 130px; background: rgba(0,0,0,0.6); }
     .nav-derecha input:focus { width: 150px; background: rgba(0,0,0,0.9); }
 
-    /* RESETEO DE VISTAS */
+    /* RESETEO DE VISTAS GENERALES */
     .vista { padding: 80px 15px 20px 15px; }
     
-    /* 🔴 CANDADO ABSOLUTO PARA EL INICIO (Cero Scroll) */
+    /* 🔴 EL BUGFIX: El inicio es una caja hermética, pero respeta el JS */
     #vista-inicio { 
         padding: 0 !important; 
-        height: 100dvh; 
+        height: 100dvh !important; 
+        width: 100vw;
         overflow: hidden !important; 
         position: relative;
-        display: flex;
-        flex-direction: column;
     }
-
-    /* CONTENEDOR HERO - Fijo a la pantalla */
-    .tarjeta-inmersiva {
-        background: transparent; border: none; padding: 0; border-radius: 0;
-        flex-direction: column; box-shadow: none;
-        position: fixed !important; /* Desvinculado del scroll */
-        top: 0; left: 0; right: 0; bottom: 0;
-        width: 100vw; height: 100dvh; z-index: 10;
-    }
-
-    /* IMAGEN DE PORTADA */
-    .portada-inmersiva {
-        width: 100vw; height: 55%; max-width: 100vw; border-radius: 0;
-        object-fit: cover; object-position: center 15%; box-shadow: none;
-        -webkit-mask-image: linear-gradient(to top, transparent 0%, black 30%);
-        mask-image: linear-gradient(to top, transparent 0%, black 30%);
-    }
-
-    /* TEXTOS - Alineados al fondo justo arriba de la barra de navegación */
-    .info-inmersiva {
-        width: 100%; padding: 0 20px; margin-top: -15vh; box-sizing: border-box;
-        z-index: 10; text-align: left; flex-grow: 1; 
-        display: flex; flex-direction: column; justify-content: flex-end; 
-        padding-bottom: calc(85px + env(safe-area-inset-bottom, 15px)); 
-    }
-
-    .titulo-inmersivo { font-size: 1.6rem; text-shadow: 2px 2px 6px rgba(0,0,0,1); margin-bottom: 5px; line-height: 1.1; }
-    .meta-inmersiva { color: #cbd5e1; font-size: 0.85rem; text-shadow: 1px 1px 4px rgba(0,0,0,1); margin-bottom: 8px; }
-    .tags-inmersivos, .rating-box { display: none; }
     
-    .sinopsis-inmersiva {
-        font-size: 0.9rem; color: #f8fafc; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
-        overflow: hidden; text-shadow: 1px 1px 4px rgba(0,0,0,1); margin-bottom: 15px;
+    #vista-inicio.activa {
+        display: block; /* Solo aplica el bloque si JavaScript dice que está activa */
     }
 
-    .acciones-inmersivas { width: 100%; flex-direction: column; margin-top: 0; }
-    .btn-principal {
-        width: 100%; background-color: var(--acento); padding: 14px; font-size: 1rem;
+    /* 🔴 SCOPE AISLADO: Los cambios drásticos solo afectan al Hero del inicio */
+    #vista-inicio .tarjeta-inmersiva {
+        background: transparent; border: none; padding: 0; border-radius: 0;
+        box-shadow: none; margin: 0;
+        position: absolute !important; 
+        top: 0; left: 0; width: 100vw; height: 100dvh;
+        display: block; 
+        z-index: 10;
+    }
+
+    #vista-inicio .portada-inmersiva {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100vw; 
+        height: 55vh !important; /* Delimitado al 55% de la pantalla */
+        max-width: 100vw; border-radius: 0;
+        object-fit: cover; object-position: center 15%; box-shadow: none;
+        -webkit-mask-image: linear-gradient(to top, transparent 0%, black 20%);
+        mask-image: linear-gradient(to top, transparent 0%, black 20%);
+    }
+
+    #vista-inicio .info-inmersiva {
+        position: absolute;
+        bottom: calc(75px + env(safe-area-inset-bottom, 15px)); /* Fijo arriba de la barra inferior */
+        left: 0;
+        width: 100%; padding: 0 20px; box-sizing: border-box;
+        z-index: 10; text-align: left; 
+    }
+
+    #vista-inicio .titulo-inmersivo { font-size: 1.5rem; text-shadow: 2px 2px 6px rgba(0,0,0,1); margin-bottom: 5px; line-height: 1.1; }
+    #vista-inicio .meta-inmersiva { color: #cbd5e1; font-size: 0.8rem; text-shadow: 1px 1px 4px rgba(0,0,0,1); margin-bottom: 6px; }
+    #vista-inicio .tags-inmersivos, #vista-inicio .rating-box { display: none; }
+    
+    /* Sinopsis optimizada y reducida a 2 líneas */
+    #vista-inicio .sinopsis-inmersiva {
+        font-size: 0.85rem; 
+        color: #f8fafc; display: -webkit-box; 
+        -webkit-line-clamp: 2; 
+        -webkit-box-orient: vertical; overflow: hidden; 
+        text-shadow: 1px 1px 4px rgba(0,0,0,1); margin-bottom: 12px;
+    }
+
+    #vista-inicio .acciones-inmersivas { width: 100%; margin-top: 0; }
+    #vista-inicio .btn-principal {
+        width: 100%; background-color: var(--acento); padding: 12px; font-size: 0.95rem;
         border-radius: 6px; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
     }
 
@@ -245,16 +259,10 @@ img { color: transparent; }
     .panel-estadisticas { grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 15px 10px; }
     .panel-estadisticas .stat-caja:nth-child(3) { grid-column: 1 / -1; }
 
-    /* NAVEGACIÓN INFERIOR S24 - Totalmente Anclada */
+    /* NAVEGACIÓN INFERIOR S24 */
     .bottom-nav {
         height: calc(60px + env(safe-area-inset-bottom, 15px)); padding-bottom: env(safe-area-inset-bottom, 15px);
         background: rgba(11, 15, 25, 0.98); position: fixed !important; bottom: 0 !important; z-index: 30000 !important;
     }
     main#contenedor-vistas { padding-bottom: calc(85px + env(safe-area-inset-bottom, 15px)); }
 }
-
-/* Animaciones */
-@keyframes slide-out-left { from { transform: translateX(0); opacity: 1; } to { transform: translateX(-100px); opacity: 0; } }
-@keyframes slide-in-right { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-@keyframes fade-in-scale { 0% { opacity: 0; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
-@keyframes glitch-subtle { 0%, 100% { transform: none; opacity: 1; } 50% { transform: skewX(5deg) translateX(-3px); opacity: 0.8; } 75% { transform: skewX(-5deg) translateX(3px); opacity: 0.8; } }
