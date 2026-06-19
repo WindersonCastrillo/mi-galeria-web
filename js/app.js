@@ -385,7 +385,7 @@ function iniciarFondoTecnologico() {
     const rainDrops = [];
     for (let x = 0; x < columns; x++) { rainDrops[x] = 1; }
 
-    setInterval(() => {
+    const draw = () => {
         ctx.fillStyle = 'rgba(11, 15, 25, 0.05)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#8b5cf6'; 
@@ -397,7 +397,9 @@ function iniciarFondoTecnologico() {
             if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) rainDrops[i] = 0;
             rainDrops[i]++;
         }
-    }, 33);
+        requestAnimationFrame(draw);
+    };
+    draw();
 
     window.addEventListener('resize', () => {
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;

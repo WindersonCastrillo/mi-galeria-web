@@ -34,7 +34,7 @@ img { color: transparent; }
 /* Navbar con Z-INDEX SUPREMO */
 .navbar {
     display: flex; justify-content: space-between; align-items: center; 
-    padding: 15px 40px; position: fixed; width: 100%; top: 0; z-index: 20000 !important; 
+    padding: 15px 40px; position: fixed; width: 100%; top: 0; z-index: 20000; 
     background: rgba(11, 15, 25, 0.2); box-sizing: border-box; border-bottom: 1px solid transparent;
 }
 .navbar::after {
@@ -183,8 +183,8 @@ img { color: transparent; }
         position: fixed;
         background: linear-gradient(to bottom, rgba(11,15,25,0.95) 0%, rgba(11,15,25,0) 100%);
         border-bottom: none;
-        padding: 15px 15px;
-        z-index: 20000 !important; 
+        padding: 15px 15px; 
+        z-index: 20000;
     }
     .navbar::after { display: none; }
     .nav-derecha input { width: 130px; background: rgba(0,0,0,0.6); }
@@ -262,7 +262,7 @@ img { color: transparent; }
     /* NAVEGACIÓN INFERIOR S24 */
     .bottom-nav {
         height: calc(60px + env(safe-area-inset-bottom, 15px)); padding-bottom: env(safe-area-inset-bottom, 15px);
-        background: rgba(11, 15, 25, 0.98); position: fixed !important; bottom: 0 !important; z-index: 30000 !important;
+        background: rgba(11, 15, 25, 0.98); position: fixed; bottom: 0; z-index: 30000;
     }
     main#contenedor-vistas { padding-bottom: calc(85px + env(safe-area-inset-bottom, 15px)); }
 }
