@@ -443,65 +443,30 @@ body { margin: 0; color: var(--texto); font-family: 'Inter', sans-serif; backgro
 }
 
 /* ========================================== */
-/* 9. DISEÑO RESPONSIVO (MOBILE-FIRST)        */
+/* 9. DISEÑO RESPONSIVO (TABLETS Y SMARTPHONES)*/
 /* ========================================== */
 
+/* --- AJUSTES PARA TABLETS (Hasta 820px) --- */
 @media (max-width: 820px) {
-    /* Ajuste para el logo de bienvenida */
-    .logo-grande {
-        font-size: 2.2rem; /* Más pequeño */
-    }
-
-    /* Ocultar menú de escritorio y mostrar barra inferior */
+    .logo-grande { font-size: 2.2rem; }
     .enlaces-menu { display: none; }
-    .bottom-nav {
-        display: flex;
-    }
+    .bottom-nav { display: flex; }
+    .navbar { padding: 15px 20px; }
+    .nav-izq-centro { gap: 20px; }
+    .nav-derecha input { width: 180px; }
+    .nav-derecha input:focus { width: 200px; }
+    .vista { padding: 80px 20px 20px 20px; }
+    
+    main#contenedor-vistas { padding-bottom: 80px; }
 
-    /* Ajustar barra de navegación */
-    .navbar {
-        padding: 15px 20px;
-    }
-    .nav-izq-centro {
-        gap: 20px;
-    }
-    .nav-derecha input {
-        width: 180px;
-    }
-    .nav-derecha input:focus {
-        width: 200px;
-    }
-
-    /* Ajustar padding general de las vistas */
-    .vista {
-        padding: 80px 20px 20px 20px;
-    }
-    /* Añadir padding inferior para que el contenido no quede oculto por la barra */
-    main#contenedor-vistas {
-        padding-bottom: 80px;
-    }
-
-    /* Tarjeta inmersiva (Hero y Detalles) en columna */
     .tarjeta-inmersiva {
         flex-direction: column;
         align-items: center;
         text-align: center;
-        padding: 15px; /* Menos padding */
+        padding: 15px; 
     }
-    .portada-inmersiva {
-        width: 130px; /* Aún más pequeña */
-    }
-    .info-inmersiva {
-        align-items: center;
-    }
-    .titulo-inmersivo {
-        font-size: 1.4rem; /* Título más compacto */
-    }
-    .sinopsis-inmersiva {
-        text-align: left; /* Mantener sinopsis justificada */
-        font-size: 0.8rem;
-        -webkit-line-clamp: 3; /* Menos líneas para compactar */
-    }
+    .info-inmersiva { align-items: center; }
+    
     .acciones-inmersivas {
         flex-direction: column;
         align-items: stretch;
@@ -509,28 +474,61 @@ body { margin: 0; color: var(--texto); font-family: 'Inter', sans-serif; backgro
         width: 100%;
     }
 
-    /* Rejillas más compactas (3 columnas) */
+    .grid-catalogo { grid-template-columns: repeat(3, 1fr); gap: 15px; }
+    .info-externa p { font-size: 0.8rem; }
+    .etiqueta-flotante { font-size: 0.65rem; padding: 3px 8px; font-weight: 600; }
+    .titulo-pagina { font-size: 1.5rem; }
+    .menu-dias { overflow-x: auto; padding-bottom: 15px; }
+}
+
+/* --- AJUSTES FINOS PARA SMARTPHONES (S24 - Hasta 480px) --- */
+@media (max-width: 480px) {
+    /* Cuadrícula a 2 columnas para que las portadas respiren */
     .grid-catalogo {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    /* Proteger el menú inferior de la barra de gestos del S24 */
+    .bottom-nav {
+        height: calc(60px + env(safe-area-inset-bottom, 15px));
+        padding-bottom: env(safe-area-inset-bottom, 15px);
+    }
+    
+    /* Darle más espacio al contenido para que no quede debajo del menú */
+    main#contenedor-vistas {
+        padding-bottom: calc(90px + env(safe-area-inset-bottom, 15px));
+    }
+
+    /* Ajustes del Hero para pantallas estrechas */
+    .portada-inmersiva {
+        width: 150px; 
+        box-shadow: 0 8px 15px rgba(0,0,0,0.6);
+    }
+    
+    .titulo-inmersivo { font-size: 1.25rem; }
+    
+    .sinopsis-inmersiva {
+        font-size: 0.85rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 4;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 15px;
+    }
+
+    /* Ajustar el buscador para que no choque con el logo */
+    .nav-derecha input { width: 140px; }
+    .nav-derecha input:focus { width: 170px; }
+
+    /* Panel de estadísticas de la bóveda en 2 columnas */
+    .panel-estadisticas {
+        grid-template-columns: repeat(2, 1fr);
+        padding: 15px 10px;
         gap: 15px;
     }
-    .info-externa p {
-        font-size: 0.8rem;
-    }
-    .etiqueta-flotante {
-        font-size: 0.65rem;
-        padding: 3px 8px;
-        font-weight: 600;
-    }
-
-    /* Títulos de página más pequeños */
-    .titulo-pagina {
-        font-size: 1.5rem;
-    }
-
-    /* Hacer que el menú de días sea deslizable */
-    .menu-dias {
-        overflow-x: auto;
-        padding-bottom: 15px; /* Espacio para la barra de scroll */
+    /* Género favorito ocupa todo el ancho abajo */
+    .panel-estadisticas .stat-caja:nth-child(3) {
+        grid-column: 1 / -1; 
     }
 }
