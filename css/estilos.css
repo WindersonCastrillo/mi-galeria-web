@@ -415,17 +415,31 @@ body { margin: 0; color: var(--texto); font-family: 'Inter', sans-serif; backgro
     align-items: center;
 }
 .bottom-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
     background: none;
     border: none;
     color: var(--texto-secundario);
-    font-size: 0.8rem;
+    font-size: 0.7rem; /* Texto más pequeño */
     font-weight: 600;
     cursor: pointer;
     transition: color 0.3s;
     padding: 10px;
 }
+.bottom-nav-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: var(--texto-secundario);
+    transition: fill 0.3s, transform 0.3s;
+}
 .bottom-nav-btn.activo {
     color: var(--acento);
+}
+.bottom-nav-btn.activo svg {
+    fill: var(--acento);
+    transform: scale(1.1);
 }
 
 /* ========================================== */
@@ -433,6 +447,11 @@ body { margin: 0; color: var(--texto); font-family: 'Inter', sans-serif; backgro
 /* ========================================== */
 
 @media (max-width: 820px) {
+    /* Ajuste para el logo de bienvenida */
+    .logo-grande {
+        font-size: 2.5rem;
+    }
+
     /* Ocultar menú de escritorio y mostrar barra inferior */
     .enlaces-menu { display: none; }
     .bottom-nav {
@@ -467,15 +486,27 @@ body { margin: 0; color: var(--texto); font-family: 'Inter', sans-serif; backgro
         flex-direction: column;
         align-items: center;
         text-align: center;
+        padding: 20px;
+    }
+    .portada-inmersiva {
+        width: 150px; /* Portada más pequeña */
     }
     .info-inmersiva {
         align-items: center;
     }
     .titulo-inmersivo {
-        font-size: 1.8rem;
+        font-size: 1.5rem; /* Título más pequeño */
     }
     .sinopsis-inmersiva {
         text-align: left; /* Mantener sinopsis justificada */
+        font-size: 0.85rem;
+        -webkit-line-clamp: 4; /* Menos líneas */
+    }
+    .acciones-inmersivas {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        width: 100%;
     }
 
     /* Títulos de página más pequeños */
