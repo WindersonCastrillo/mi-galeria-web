@@ -14,7 +14,6 @@ const traduccionesTemporada = { "spring": "Primavera", "summer": "Verano", "fall
 const traduccionesEstado = { "Currently Airing": "En emisión", "Finished Airing": "Finalizado", "Not yet aired": "Próximamente" };
 const translateCache = {}; 
 
-// Función para barajar un array (algoritmo Fisher-Yates)
 function barajarArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -23,7 +22,6 @@ function barajarArray(array) {
     return array;
 }
 
-// Filtro anti-clones
 function eliminarDuplicados(animesArray) {
     const vistos = new Set();
     return animesArray.filter(anime => {
@@ -33,7 +31,6 @@ function eliminarDuplicados(animesArray) {
     });
 }
 
-// Función para traducir texto usando MyMemory API
 async function traducirTexto(texto, langpair = 'en|es') {
     if (!texto) return "Sinopsis no disponible.";
     if (translateCache[texto]) return translateCache[texto]; 
@@ -53,7 +50,7 @@ async function traducirTexto(texto, langpair = 'en|es') {
     }
 }
 
-// 1. Navegación SPA
+// 1. Navegación SPA (CON CANDADO DE SCROLL)
 function cambiarVista(idVista) {
     if(idVista !== 'vista-detalles') {
         vistaAnterior = idVista; 
@@ -64,25 +61,25 @@ function cambiarVista(idVista) {
     document.getElementById(idVista).classList.add('activa');
     
     document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
-        if (btn.dataset.vista === idVista) {
-            btn.classList.add('activo');
-        } else {
-            btn.classList.remove('activo');
-        }
+        btn.classList.toggle('activo', btn.dataset.vista === idVista);
     });
 
     document.getElementById('buscar').value = ''; 
     document.getElementById('lista-resultados').style.display = 'none';
 
-    // Cargas Automáticas
-    if (idVista === 'vista-directorio' && !catalogoCargado) {
-        cargarDirectorio();
-    } else if (idVista === 'vista-calendario' && !horariosCargados) {
+    // BLOQUEO MAESTRO DE SCROLL PARA EL INICIO
+    if (idVista === 'vista-inicio') {
+        document.body.style.overflow = 'hidden';
+        window.scrollTo(0,0);
+    } else {
+        document.body.style.overflow = 'auto';
+    }
+
+    if (idVista === 'vista-directorio' && !catalogoCargado) cargarDirectorio();
+    else if (idVista === 'vista-calendario' && !horariosCargados) {
         cargarHorario('monday', document.querySelector('.menu-dias button'));
         horariosCargados = true;
-    } else if (idVista === 'vista-boveda') {
-        cargarBoveda();
-    }
+    } else if (idVista === 'vista-boveda') cargarBoveda();
 }
 
 function volverDeDetalles() {
@@ -90,7 +87,7 @@ function volverDeDetalles() {
 }
 
 // ==========================================
-// 2. HERO DINÁMICO (Animación y Rotación)
+// 2. HERO DINÁMICO (PRE-CARGA INTELIGENTE)
 // ==========================================
 async function iniciarHeroRotativo() {
     try {
@@ -101,31 +98,37 @@ async function iniciarHeroRotativo() {
         heroAnimes = barajarArray(animesFiltrados);
         
         if (heroAnimes.length > 0) {
+            // Pre-traducimos el primero antes de mostrarlo
+            const primerAnime = heroAnimes[0];
+            const sinopsisOriginal = primerAnime.synopsis ? primerAnime.synopsis.split('[Written by')[0].trim() : "Sinopsis no disponible.";
+            primerAnime.sinopsisTraducida = await traducirTexto(sinopsisOriginal);
+
             actualizarUIHero();
             if(intervaloHero) clearInterval(intervaloHero); 
             intervaloHero = setInterval(cambiarHeroSiguiente, 8000); 
         }
     } catch (error) {
         console.error("Error cargando Hero:", error);
-        const contenedor = document.getElementById('hero-contenedor');
-        document.getElementById('hero-titulo').innerText = "Error de Sincronización";
-        document.getElementById('hero-meta').innerText = "Fallo en la conexión con la API";
-        document.getElementById('hero-sinopsis').innerText = "No se pudo cargar el anime destacado. Esto puede deberse a un problema con la red o con el servidor de Jikan. Por favor, intenta recargar la página más tarde.";
-        document.getElementById('hero-imagen').src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="; // Pixel transparente de respaldo
-        document.getElementById('hero-rating').innerText = "---";
-        document.getElementById('hero-tags').innerHTML = '<span class="tag">Offline</span>';
-        contenedor.classList.remove('fade-out');
     }
 }
 
-function cambiarHeroSiguiente() {
-    indiceHeroActual = (indiceHeroActual + 1) % heroAnimes.length;
+async function cambiarHeroSiguiente() {
     const siguienteIndice = (indiceHeroActual + 1) % heroAnimes.length;
     const siguienteAnime = heroAnimes[siguienteIndice];
+    
+    // LA MAGIA: Pre-carga secreta mientras el usuario sigue viendo el anime actual
     if (siguienteAnime) {
         const img = new Image();
         img.src = siguienteAnime.images.jpg.large_image_url;
+        
+        const sinopsisOriginal = siguienteAnime.synopsis ? siguienteAnime.synopsis.split('[Written by')[0].trim() : "Sinopsis no disponible.";
+        if (!siguienteAnime.sinopsisTraducida) {
+            siguienteAnime.sinopsisTraducida = await traducirTexto(sinopsisOriginal);
+        }
     }
+    
+    // Una vez descargado todo, actualizamos
+    indiceHeroActual = siguienteIndice;
     actualizarUIHero();
 }
 
@@ -135,21 +138,18 @@ function actualizarUIHero() {
 
     contenedor.style.animation = 'slide-out-left 0.4s ease-out forwards';
 
-    setTimeout(async () => {
+    setTimeout(() => {
         contenedor.style.opacity = 0;
 
-        const sinopsisOriginal = anime.synopsis ? anime.synopsis.split('[Written by')[0].trim() : "Sinopsis no disponible.";
         const temporada = anime.season ? `Temporada ${traduccionesTemporada[anime.season] || anime.season}` : "Actualidad";
         const estado = traduccionesEstado[anime.status] || anime.status;
-        const sinopsisTraducida = await traducirTexto(sinopsisOriginal);
 
         document.getElementById('hero-imagen').src = anime.images.jpg.large_image_url;
         document.getElementById('hero-titulo').innerText = anime.title;
         document.getElementById('hero-meta').innerText = `${anime.type || 'TV'} • ${anime.year || new Date().getFullYear()} • ${temporada} • ${estado}`;
         document.getElementById('hero-rating').innerText = anime.score ? anime.score.toFixed(2) : "N/A";
-        document.getElementById('hero-tags').innerHTML = anime.genres && anime.genres.length > 0 ? anime.genres.slice(0, 4).map(g => `<span class="tag">${g.name}</span>`).join('') : '';
+        document.getElementById('hero-sinopsis').innerText = anime.sinopsisTraducida || "Sinopsis no disponible.";
         document.getElementById('btn-hero-detalles').onclick = () => abrirDetalles(anime.mal_id);
-        document.getElementById('hero-sinopsis').innerText = sinopsisTraducida;
 
         contenedor.style.animation = 'slide-in-right 0.4s ease-out forwards';
         contenedor.style.opacity = 1; 
@@ -166,11 +166,8 @@ async function cargarDirectorio() {
         skeletonHTML += `
             <div class="tarjeta-anime">
                 <div class="contenedor-portada skeleton" style="aspect-ratio: 2/3;"></div>
-                <div class="info-externa" style="padding: 12px 15px;">
-                    <div class="skeleton" style="height: 1.1rem; width: 80%;"></div>
-                </div>
-            </div>
-        `;
+                <div class="info-externa" style="padding: 12px 15px;"><div class="skeleton" style="height: 1.1rem; width: 80%;"></div></div>
+            </div>`;
     }
     grid.innerHTML = skeletonHTML;
 
@@ -185,18 +182,11 @@ async function cargarDirectorio() {
                     <img src="${a.images.jpg.image_url}" alt="${a.title}" loading="lazy">
                     <span class="etiqueta-flotante">⭐ ${a.score ? a.score.toFixed(1) : 'N/A'}</span>
                 </div>
-                <div class="info-externa">
-                    <p title="${a.title}">${a.title}</p>
-                </div>
+                <div class="info-externa"><p title="${a.title}">${a.title}</p></div>
             </div>
         `).join('');
-        
         catalogoCargado = true;
-
-    } catch (error) {
-        grid.innerHTML = '<p style="grid-column: 1 / -1; color: #ef4444; text-align: center;">Error al cargar el catálogo.</p>';
-        catalogoCargado = false;
-    }
+    } catch (error) { grid.innerHTML = '<p style="text-align: center;">Error al cargar el catálogo.</p>'; }
 }
 
 // ==========================================
@@ -207,28 +197,14 @@ async function cargarHorario(dia, btnElement) {
     btnElement.classList.add('activo');
 
     const grid = document.getElementById('grid-horarios');
-    let skeletonHTML = '';
-    for (let i = 0; i < 12; i++) {
-        skeletonHTML += `
-            <div class="tarjeta-anime">
-                <div class="contenedor-portada skeleton" style="aspect-ratio: 2/3;"></div>
-                <div class="info-externa" style="padding: 12px 15px;">
-                    <div class="skeleton" style="height: 1.1rem; width: 80%;"></div>
-                </div>
-            </div>
-        `;
-    }
-    grid.innerHTML = skeletonHTML;
+    grid.innerHTML = `<div class="tarjeta-anime"><div class="contenedor-portada skeleton" style="aspect-ratio: 2/3;"></div></div>`;
     
     try {
         const respuesta = await fetch(`https://api.jikan.moe/v4/schedules?filter=${dia}&limit=24`);
         const data = await respuesta.json();
         const animesUnicos = eliminarDuplicados(data.data);
         
-        if (animesUnicos.length === 0) {
-            grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center;">No hay emisiones programadas para este día.</p>';
-            return;
-        }
+        if (animesUnicos.length === 0) { grid.innerHTML = '<p style="text-align: center;">No hay emisiones programadas para este día.</p>'; return; }
 
         grid.innerHTML = animesUnicos.map(a => `
             <div class="tarjeta-anime" onclick="abrirDetalles(${a.mal_id})">
@@ -236,15 +212,10 @@ async function cargarHorario(dia, btnElement) {
                     <img src="${a.images.jpg.image_url}" alt="${a.title}" loading="lazy">
                     <span class="etiqueta-flotante">🕘 ${a.broadcast.time || 'N/A'}</span>
                 </div>
-                <div class="info-externa">
-                    <p title="${a.title}">${a.title}</p>
-                </div>
+                <div class="info-externa"><p title="${a.title}">${a.title}</p></div>
             </div>
         `).join('');
-
-    } catch (error) {
-        grid.innerHTML = '<p style="grid-column: 1 / -1; color: #ef4444; text-align: center;">Error de red en horarios.</p>';
-    }
+    } catch (error) { grid.innerHTML = '<p style="text-align: center;">Error de red en horarios.</p>'; }
 }
 
 // ==========================================
@@ -257,32 +228,23 @@ document.getElementById('buscar').addEventListener('input', (e) => {
 
     if (query.length > 2) {
         lista.style.display = 'block';
-        lista.innerHTML = `<p style="padding: 10px; margin: 0; color: var(--acento);">Buscando...</p>`;
+        lista.innerHTML = `<p style="padding: 10px; color: var(--acento);">Buscando...</p>`;
 
         temporizadorBusqueda = setTimeout(async () => {
             try {
                 const respuesta = await fetch(`https://api.jikan.moe/v4/anime?q=${query}&limit=5`);
                 const data = await respuesta.json();
-                if (data.data.length === 0) {
-                    lista.innerHTML = `<p style="padding: 10px; margin: 0;">No hay resultados.</p>`;
-                    return;
-                }
+                if (data.data.length === 0) { lista.innerHTML = `<p style="padding: 10px;">No hay resultados.</p>`; return; }
+                
                 lista.innerHTML = data.data.map(anime => `
                     <div class="tarjeta-busqueda" onclick="abrirDetalles(${anime.mal_id})">
                         <img src="${anime.images.jpg.image_url}" alt="${anime.title}" loading="lazy">
-                        <div class="tarjeta-busqueda-info">
-                            <h4>${anime.title}</h4>
-                            <span>${anime.year || 'TV Anime'}</span>
-                        </div>
+                        <div class="tarjeta-busqueda-info"><h4>${anime.title}</h4><span>${anime.year || 'TV Anime'}</span></div>
                     </div>
                 `).join('');
-            } catch (error) {
-                lista.innerHTML = `<p style="padding: 10px; margin: 0; color: #ef4444;">Error de red.</p>`;
-            }
+            } catch (error) { lista.innerHTML = `<p style="padding: 10px;">Error de red.</p>`; }
         }, 400); 
-    } else {
-        lista.style.display = 'none';
-    }
+    } else { lista.style.display = 'none'; }
 });
 
 // ==========================================
@@ -297,14 +259,8 @@ async function abrirDetalles(idAnime) {
     document.getElementById('detalle-titulo').innerHTML = '<div class="skeleton" style="height: 2.2rem; width: 70%; margin-bottom: 8px;"></div>';
     document.getElementById('detalle-meta').innerHTML = '<div class="skeleton" style="height: 0.9rem; width: 90%; margin-bottom: 15px;"></div>';
     document.getElementById('detalle-tags').innerHTML = '<div class="skeleton" style="height: 30px; width: 80%; margin-bottom: 15px;"></div>';
-    document.getElementById('detalle-sinopsis').innerHTML = `
-        <div class="skeleton" style="height: 1em; width: 100%; margin-bottom: 0.5em;"></div>
-        <div class="skeleton" style="height: 1em; width: 100%; margin-bottom: 0.5em;"></div>
-        <div class="skeleton" style="height: 1em; width: 90%; margin-bottom: 0.5em;"></div>
-        <div class="skeleton" style="height: 1em; width: 60%; margin-bottom: 0.5em;"></div>
-    `;
+    document.getElementById('detalle-sinopsis').innerHTML = '<div class="skeleton" style="height: 4em; width: 100%;"></div>';
     document.getElementById('detalle-rating-valor').innerText = "-";
-
     document.querySelector('#vista-detalles .btn-secundario').style.display = 'none';
 
     try {
@@ -329,26 +285,19 @@ async function abrirDetalles(idAnime) {
 
         if (data.genres && data.genres.length > 0) {
             document.getElementById('detalle-tags').innerHTML = data.genres.map(g => `<span class="tag">${g.name}</span>`).join('');
-        } else {
-            document.getElementById('detalle-tags').innerHTML = '<span class="tag">Sin Clasificar</span>';
-        }
+        } else { document.getElementById('detalle-tags').innerHTML = '<span class="tag">Sin Clasificar</span>'; }
 
         animeActualParaBoveda = {
-            mal_id: data.mal_id,
-            title: data.title,
-            image_url: data.images.jpg.large_image_url,
+            mal_id: data.mal_id, title: data.title, image_url: data.images.jpg.large_image_url,
             type: data.type, year: data.year, status: estado, score: data.score, genres: data.genres
         };
 
         const btnGuardar = document.querySelector('#vista-detalles .btn-secundario');
         btnGuardar.style.display = 'flex';
         btnGuardar.onclick = guardarEnBoveda;
-    } catch (error) {
-        document.getElementById('detalle-titulo').innerText = "Error de Sistema";
-    }
+    } catch (error) { document.getElementById('detalle-titulo').innerText = "Error de Sistema"; }
 }
 
-// Función para ENVIAR a MongoDB
 async function guardarEnBoveda() {
     const btn = document.querySelector('#vista-detalles .btn-secundario');
     btn.innerText = "⏳ Guardando...";
@@ -356,40 +305,25 @@ async function guardarEnBoveda() {
 
     try {
         const respuesta = await fetch(`${API_URL}/api/guardar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(animeActualParaBoveda)
         });
         const resultado = await respuesta.json();
 
-        if (respuesta.ok && resultado.status === 'ok') {
-            mostrarToast("✔️ Guardado en tu Bóveda", "success");
-        } else if (respuesta.ok && resultado.status === 'duplicado') {
-            mostrarToast("⚠️ Ya está en tu Bóveda", "warning");
-        } else {
-             mostrarToast(resultado.mensaje || "Error al guardar", "error");
-        }
+        if (respuesta.ok && resultado.status === 'ok') mostrarToast("✔️ Guardado en tu Bóveda", "success");
+        else if (respuesta.ok && resultado.status === 'duplicado') mostrarToast("⚠️ Ya está en tu Bóveda", "warning");
+        else mostrarToast(resultado.mensaje || "Error al guardar", "error");
     } catch (error) {
-        console.error("Error al conectar con el backend:", error);
         mostrarToast("❌ No se pudo conectar al servidor", "error");
     } finally {
-        setTimeout(() => {
-            btn.innerText = "➕ Agregar a Bóveda";
-            btn.disabled = false;
-        }, 1500);
+        setTimeout(() => { btn.innerText = "➕ Agregar a Bóveda"; btn.disabled = false; }, 1500);
     }
 }
 
-// Función para TRAER desde MongoDB
 async function cargarBoveda() {
     const panelStats = document.getElementById('panel-estadisticas');
     const gridBoveda = document.getElementById('grid-boveda');
     
-    panelStats.innerHTML = `
-        <div class="stat-caja"><div class="valor skeleton" style="height: 2rem; width: 50%; margin: 0 auto;"></div><div class="etiqueta">Total</div></div>
-        <div class="stat-caja"><div class="valor skeleton" style="height: 2rem; width: 50%; margin: 0 auto;"></div><div class="etiqueta">Puntuación Media</div></div>
-        <div class="stat-caja"><div class="valor skeleton" style="height: 2rem; width: 50%; margin: 0 auto;"></div><div class="etiqueta">Género Favorito</div></div>
-    `;
     gridBoveda.innerHTML = `<div class="boveda-vacia glass-panel-dark" style="color: var(--acento);">📡 Sincronizando bóveda...</div>`;
     
     try {
@@ -405,11 +339,7 @@ async function cargarBoveda() {
             puntuacionMedia = animesConScore.reduce((sum, a) => sum + a.score, 0) / (animesConScore.length || 1);
 
             animesGuardados.forEach(a => {
-                if (a.genres) {
-                    a.genres.forEach(g => {
-                        conteoGeneros[g.name] = (conteoGeneros[g.name] || 0) + 1;
-                    });
-                }
+                if (a.genres) { a.genres.forEach(g => { conteoGeneros[g.name] = (conteoGeneros[g.name] || 0) + 1; }); }
             });
         }
         const generoFavorito = Object.keys(conteoGeneros).length > 0 ? Object.entries(conteoGeneros).sort((a, b) => b[1] - a[1])[0][0] : 'N/A';
@@ -425,130 +355,91 @@ async function cargarBoveda() {
             return;
         }
                         
-        const htmlGrid = animesGuardados.map(a => `
+        gridBoveda.innerHTML = animesGuardados.map(a => `
             <div class="tarjeta-anime" onclick="abrirDetalles(${a.mal_id})">
                 <div class="contenedor-portada">
                     <img src="${a.image_url}" alt="${a.title}" loading="lazy">
                     <span class="etiqueta-flotante" style="background: var(--acento); color: #000;">Guardado</span>
                 </div>
-                <div class="info-externa">
-                    <p title="${a.title}">${a.title}</p>
-                </div>
+                <div class="info-externa"><p title="${a.title}">${a.title}</p></div>
             </div>
         `).join('');
-        gridBoveda.innerHTML = htmlGrid;
 
     } catch (error) {
-        console.error("Error al cargar la bóveda:", error);
         gridBoveda.innerHTML = `<div class="boveda-vacia glass-panel-dark" style="color: #ef4444;">❌ Servidor apagado. No se pudo conectar con MongoDB.</div>`;
     }
 }
 
 // ==========================================
-// 7. FONDO TECNOLÓGICO ANIMADO (CANVAS)
+// 7. FONDO TECNOLÓGICO ANIMADO
 // ==========================================
 function iniciarFondoTecnologico() {
     const canvas = document.getElementById('fondo-tecnologico');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
 
     const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
-    const alphabet = katakana;
     const fontSize = 16;
     const columns = canvas.width / fontSize;
-
     const rainDrops = [];
     for (let x = 0; x < columns; x++) { rainDrops[x] = 1; }
 
-    const draw = () => {
+    setInterval(() => {
         ctx.fillStyle = 'rgba(11, 15, 25, 0.05)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#8b5cf6'; 
         ctx.font = `${fontSize}px monospace`;
 
         for (let i = 0; i < rainDrops.length; i++) {
-            const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+            const text = katakana.charAt(Math.floor(Math.random() * katakana.length));
             ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
-
-            if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-                rainDrops[i] = 0;
-            }
+            if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) rainDrops[i] = 0;
             rainDrops[i]++;
         }
-    };
-
-    setInterval(draw, 33);
+    }, 33);
 
     window.addEventListener('resize', () => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        const newColumns = canvas.width / fontSize;
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
         rainDrops.length = 0; 
-        for (let x = 0; x < newColumns; x++) { rainDrops[x] = 1; }
+        for (let x = 0; x < canvas.width / fontSize; x++) { rainDrops[x] = 1; }
     });
 }
 
-// ==========================================
-// 8. UTILIDADES DE INTERFAZ
-// ==========================================
 function iniciarUtilidadesUI() {
     const btnScroll = document.getElementById('btn-scroll-top');
-
-    window.addEventListener('scroll', () => {
-        if (window.scrollY > 400) {
-            btnScroll.classList.add('visible');
-        } else {
-            btnScroll.classList.remove('visible');
-        }
-    });
-
+    window.addEventListener('scroll', () => { btnScroll.classList.toggle('visible', window.scrollY > 400); });
     btnScroll.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-
     document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            cambiarVista(btn.dataset.vista);
-        });
+        btn.addEventListener('click', () => cambiarVista(btn.dataset.vista));
     });
 }
 
 function mostrarToast(mensaje, tipo = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
-
     const toast = document.createElement('div');
     toast.className = `toast ${tipo}`;
     toast.textContent = mensaje;
     container.appendChild(toast);
-
     setTimeout(() => { toast.remove(); }, 4500); 
 }
 
-// INICIO DEL SISTEMA
 function iniciarApp() {
     const splashScreen = document.getElementById('splash-screen');
     const logoGrande = document.querySelector('.logo-grande');
-    const navbar = document.querySelector('.navbar');
-    const mainContent = document.getElementById('contenedor-vistas');
-
     if (splashScreen && logoGrande) {
         splashScreen.addEventListener('click', () => {
             logoGrande.classList.add('minimizado');
             splashScreen.classList.add('oculto');
-
-            navbar.classList.remove('contenido-oculto');
-            mainContent.classList.remove('contenido-oculto');
+            document.querySelector('.navbar').classList.remove('contenido-oculto');
+            document.getElementById('contenedor-vistas').classList.remove('contenido-oculto');
             
             cambiarVista('vista-inicio');
             iniciarHeroRotativo();
             iniciarFondoTecnologico();
             iniciarUtilidadesUI();
-
-            setTimeout(() => {
-                if (splashScreen) splashScreen.remove();
-            }, 1500); 
+            setTimeout(() => { if (splashScreen) splashScreen.remove(); }, 1500); 
         }, { once: true }); 
     }
 };
