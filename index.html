@@ -9,9 +9,13 @@
 </head>
 <body>
 
-    <div class="fondo-tecnologico"></div>
+    <div id="splash-screen">
+        <h1 class="logo-grande">AniSync<span>Toshokan</span></h1>
+    </div>
 
-    <header class="navbar">
+    <canvas id="fondo-tecnologico"></canvas>
+
+    <header class="navbar contenido-oculto">
         <div class="nav-izq-centro">
             <h1 class="logo-pequeno" onclick="cambiarVista('vista-inicio')">AniSync<span>Toshokan</span></h1>
             <nav class="enlaces-menu">
@@ -28,7 +32,7 @@
         </div>
     </header>
 
-    <main id="contenedor-vistas">
+    <main id="contenedor-vistas" class="contenido-oculto">
         
         <section id="vista-inicio" class="vista activa">
             <div class="tarjeta-inmersiva" id="hero-contenedor">
@@ -77,6 +81,8 @@
         </section>
 
         <section id="vista-detalles" class="vista">
+            <div id="detalle-fondo-cine"></div>
+
             <button class="btn-volver" onclick="volverDeDetalles()">← Volver atrás</button>
             
             <div class="tarjeta-inmersiva glass-panel-dark">
@@ -108,6 +114,10 @@
             </div>
         </section>
     </main>
+
+    <button id="btn-scroll-top" title="Volver arriba">▲</button>
+
+    <div id="toast-container"></div>
 
     <script src="js/app.js"></script>
 </body>

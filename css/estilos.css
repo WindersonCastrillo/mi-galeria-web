@@ -10,25 +10,59 @@
 
 body { margin: 0; color: var(--texto); font-family: 'Inter', sans-serif; background-color: var(--fondo-profundo); overflow-x: hidden; }
 
-/* Lienzo Sakura Nocturno */
-.fondo-tecnologico {
-    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: linear-gradient(rgba(11, 15, 25, 0.85), rgba(11, 15, 25, 0.95)), url('../img/fondo-sakura.jpg');
-    background-size: cover; background-position: center; background-attachment: fixed;
+/* Estilos para el fondo tecnológico animado */
+#fondo-tecnologico {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     z-index: -1;
 }
 
+/* Splash Screen de Bienvenida */
+#splash-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--fondo-profundo);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: opacity 0.8s ease-out 0.5s;
+}
+
+.logo-grande {
+    font-size: 4rem;
+    font-weight: 800;
+    color: white;
+    transition: all 0.8s cubic-bezier(0.65, 0, 0.35, 1);
+    transform-origin: center center;
+}
+
+.logo-grande span { color: var(--acento); }
+
+.logo-grande.minimizado {
+    transform: translate(calc(-50vw + 130px), calc(-50vh + 42px)) scale(0.375);
+}
+
+#splash-screen.oculto { opacity: 0; pointer-events: none; }
+
 .glass-panel-dark {
     background: var(--fondo-tarjetas); backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px;
 }
 
 /* Header */
-.navbar { 
+.navbar {
     display: flex; justify-content: space-between; align-items: center; 
     padding: 15px 40px; position: fixed; width: 100%; top: 0; z-index: 1000; 
     background: var(--fondo-header); backdrop-filter: blur(10px);
-    box-sizing: border-box; border-bottom: 1px solid rgba(255,255,255,0.05);
+    box-sizing: border-box; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .nav-izq-centro { display: flex; align-items: center; gap: 40px; }
@@ -57,24 +91,30 @@ body { margin: 0; color: var(--texto); font-family: 'Inter', sans-serif; backgro
 .tarjeta-busqueda-info span { font-size: 0.75rem; color: var(--texto-secundario); }
 
 /* Vistas Principales */
-.vista { display: none; padding: 100px 40px 50px 40px; min-height: 100vh; box-sizing: border-box; }
+.vista { display: none; padding: 90px 40px 40px 40px; min-height: 100vh; box-sizing: border-box; }
 .vista.activa { display: block; animation: fadeIn 0.4s ease forwards; }
+
+.contenido-oculto {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease-in 0.4s;
+}
 
 /* Tarjeta Inmersiva (Hero y Detalles) */
 .tarjeta-inmersiva {
-    display: flex; gap: 30px; max-width: 1000px; margin: 0 auto; 
-    padding: 30px; background: var(--fondo-tarjetas);
-    border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);
+    display: flex; gap: 25px; max-width: 960px; margin: 0 auto; 
+    padding: 25px; background: var(--fondo-tarjetas);
+    border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08);
     transition: opacity 0.5s ease-in-out;
 }
 .tarjeta-inmersiva.fade-out { opacity: 0; }
 .portada-inmersiva { width: 280px; border-radius: 8px; object-fit: cover; box-shadow: 0 10px 20px rgba(0,0,0,0.5); flex-shrink: 0; }
 .info-inmersiva { display: flex; flex-direction: column; text-align: left; justify-content: flex-start; }
-.titulo-inmersivo { font-size: 2.5rem; margin: 0 0 10px 0; line-height: 1.2; }
-.meta-inmersiva { color: #2dd4bf; font-size: 0.95rem; margin-bottom: 20px; font-weight: 600; }
-.tags-inmersivos { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.titulo-inmersivo { font-size: 2.2rem; margin: 0 0 8px 0; line-height: 1.2; }
+.meta-inmersiva { color: var(--acento); font-size: 0.9rem; margin-bottom: 15px; font-weight: 600; }
+.tags-inmersivos { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
 .tag { background: rgba(255,255,255,0.05); padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.1); }
-.sinopsis-inmersiva { font-size: 1rem; line-height: 1.7; color: #cbd5e1; margin-bottom: 30px; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+.sinopsis-inmersiva { font-size: 0.95rem; line-height: 1.6; color: #cbd5e1; margin-bottom: 25px; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 
 .acciones-inmersivas { display: flex; align-items: center; gap: 20px; margin-top: auto; }
 .rating-box { display: flex; align-items: center; gap: 8px; }
@@ -93,8 +133,11 @@ body { margin: 0; color: var(--texto); font-family: 'Inter', sans-serif; backgro
 .grid-catalogo { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 25px; }
 .tarjeta-anime { cursor: pointer; transition: transform 0.2s ease; display: flex; flex-direction: column; }
 .tarjeta-anime:hover { transform: translateY(-5px); }
-.contenedor-portada { position: relative; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+.contenedor-portada { position: relative; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid transparent; transition: border-color 0.3s ease; }
 .contenedor-portada img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; transition: transform 0.3s ease; }
+.tarjeta-anime:hover .contenedor-portada {
+    border-color: var(--acento);
+}
 .tarjeta-anime:hover .contenedor-portada img { transform: scale(1.05); }
 .etiqueta-flotante { position: absolute; bottom: 0; left: 0; background: rgba(11, 15, 25, 0.9); padding: 4px 10px; font-size: 0.75rem; font-weight: bold; border-top-right-radius: 8px; color: #cbd5e1; }
 .info-externa { padding-top: 12px; }
@@ -112,3 +155,104 @@ body { margin: 0; color: var(--texto); font-family: 'Inter', sans-serif; backgro
 .boveda-vacia { padding: 40px; text-align: center; }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Esqueletos de Carga (Skeleton Loaders) */
+@keyframes shimmer {
+    100% { transform: translateX(100%); }
+}
+
+.skeleton {
+    background-color: rgba(255, 255, 255, 0.08);
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+}
+
+.skeleton::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(255,255,255,0) 0, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+    transform: translateX(-100%);
+    animation: shimmer 1.5s infinite;
+}
+
+/* Animaciones de entrada para el Hero */
+.animate-in {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: slide-in 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+@keyframes slide-in { to { opacity: 1; transform: translateY(0); } }
+
+/* Botón "Volver Arriba" */
+#btn-scroll-top {
+    position: fixed; bottom: 25px; right: 25px;
+    width: 45px; height: 45px;
+    background-color: var(--acento); color: white;
+    border: none; border-radius: 50%;
+    font-size: 20px; font-weight: bold;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: translateY(100px); pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease; z-index: 1050;
+}
+#btn-scroll-top.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+/* Modo Cine para Vista de Detalles */
+#detalle-fondo-cine {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    filter: blur(20px) brightness(0.4);
+    transform: scale(1.1); /* Evita bordes duros por el blur */
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    z-index: -1; /* Detrás de todo en la vista */
+}
+
+#detalle-fondo-cine.activo {
+    opacity: 1;
+}
+
+/* Ajuste para el panel sobre el fondo de cine */
+#vista-detalles .tarjeta-inmersiva {
+    background: rgba(17, 24, 39, 0.7); /* Un poco más transparente */
+    backdrop-filter: blur(16px);
+}
+
+/* Notificaciones Toast */
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    padding: 12px 20px;
+    border-radius: 8px;
+    background: #1f2937;
+    color: var(--texto);
+    font-weight: 600;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+    border-left: 5px solid var(--acento);
+    animation: slideInToast 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards,
+               fadeOutToast 0.4s ease-in 4s forwards;
+}
+
+.toast.success { border-left-color: #10b981; }
+.toast.warning { border-left-color: #fbbf24; }
+.toast.error   { border-left-color: #ef4444; }
+
+@keyframes slideInToast { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes fadeOutToast { from { opacity: 1; } to { opacity: 0; transform: translateY(20px); } }
