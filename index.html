@@ -30,6 +30,19 @@
             <input id="buscar" type="search" placeholder="Buscar anime..." autocomplete="off">
             <div id="lista-resultados" class="dropdown-lista glass-panel-dark"></div>
         </div>
+
+        <button id="btn-menu-movil" class="btn-menu-movil">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+
+        <div id="menu-movil-overlay" class="menu-movil-overlay">
+            <button onclick="cambiarVista('vista-inicio'); cerrarMenuMovil();">Inicio</button>
+            <button onclick="cambiarVista('vista-directorio'); cerrarMenuMovil();">Catálogo</button>
+            <button onclick="cambiarVista('vista-calendario'); cerrarMenuMovil();">Horarios</button>
+            <button onclick="cambiarVista('vista-boveda'); cerrarMenuMovil();">Mi Bóveda 🤍</button>
+        </div>
     </header>
 
     <main id="contenedor-vistas" class="contenido-oculto">
@@ -75,9 +88,7 @@
                 <button class="filtro-btn" onclick="cargarHorario('sunday', this)">Domingo</button>
             </div>
             
-            <div id="grid-horarios" class="grid-catalogo">
-                <p style="opacity: 0.5; grid-column: 1 / -1; text-align: center;">Sincronizando base de datos...</p>
-            </div>
+            <div id="grid-horarios" class="grid-catalogo"></div>
         </section>
 
         <section id="vista-detalles" class="vista">
@@ -109,8 +120,13 @@
 
         <section id="vista-boveda" class="vista">
             <h2 class="titulo-pagina">Mi <span>Bóveda</span></h2>
-            <div class="boveda-vacia glass-panel-dark">
-                🛡️ Conexión MongoDB establecida. Aquí aparecerán tus animes guardados.
+            <div id="panel-estadisticas" class="panel-estadisticas">
+                <!-- Las estadísticas se cargarán aquí -->
+            </div>
+            <div id="grid-boveda" class="grid-catalogo">
+                <div class="boveda-vacia glass-panel-dark">
+                    🛡️ Conexión MongoDB establecida. Aquí aparecerán tus animes guardados. Si no ves nada, asegúrate de que el servidor de Python esté corriendo.
+                </div>
             </div>
         </section>
     </main>

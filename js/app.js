@@ -12,6 +12,7 @@ let intervaloHero;
 
 const traduccionesTemporada = { "spring": "Primavera", "summer": "Verano", "fall": "Otoño", "winter": "Invierno" };
 const traduccionesEstado = { "Currently Airing": "En emisión", "Finished Airing": "Finalizado", "Not yet aired": "Próximamente" };
+const translateCache = {}; // Caché para almacenar traducciones
 
 // Función para barajar un array (algoritmo Fisher-Yates)
 function barajarArray(array) {
@@ -30,6 +31,26 @@ function eliminarDuplicados(animesArray) {
         vistos.add(anime.mal_id);
         return true;
     });
+}
+
+// Función para traducir texto usando MyMemory API
+async function traducirTexto(texto, langpair = 'en|es') {
+    if (!texto) return "Sinopsis no disponible.";
+    if (translateCache[texto]) return translateCache[texto]; // Devolver de la caché si ya existe
+
+    try {
+        const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(texto)}&langpair=${langpair}`);
+        const data = await response.json();
+        if (data.responseStatus === 200 && data.responseData.translatedText) {
+            const translated = data.responseData.translatedText;
+            translateCache[texto] = translated; // Almacenar en caché
+            return translated;
+        } else {
+            return `${texto} (Traducción no disponible)`;
+        }
+    } catch (error) {
+        return `${texto} (Error de traducción)`;
+    }
 }
 
 // 1. Navegación SPA
@@ -96,44 +117,47 @@ async function iniciarHeroRotativo() {
 
 function cambiarHeroSiguiente() {
     indiceHeroActual = (indiceHeroActual + 1) % heroAnimes.length;
+
+    // Pre-cargamos la imagen del siguiente anime para que la transición sea instantánea
+    const siguienteIndice = (indiceHeroActual + 1) % heroAnimes.length;
+    const siguienteAnime = heroAnimes[siguienteIndice];
+    if (siguienteAnime) {
+        const img = new Image();
+        img.src = siguienteAnime.images.jpg.large_image_url;
+    }
+
     actualizarUIHero();
 }
 
 function actualizarUIHero() {
     const anime = heroAnimes[indiceHeroActual];
     const contenedor = document.getElementById('hero-contenedor');
-    
-    contenedor.classList.add('fade-out');
 
-    const elementosAnimados = [
-        document.getElementById('hero-titulo'),
-        document.getElementById('hero-meta'),
-        document.getElementById('hero-tags'),
-        document.getElementById('hero-sinopsis'),
-        document.querySelector('#hero-contenedor .acciones-inmersivas')
-    ];
-    elementosAnimados.forEach(el => el.classList.remove('animate-in'));
+    // 1. Inicia la animación de salida
+    contenedor.style.animation = 'slide-out-left 0.4s ease-out forwards';
 
-    setTimeout(() => {
-        const sinopsisLimpia = anime.synopsis.split('[Written by')[0].trim();
+    // 2. Espera a que termine la animación para cambiar el contenido
+    setTimeout(async () => {
+        // Ocultamos el contenedor temporalmente para evitar parpadeos mientras se actualiza
+        contenedor.style.opacity = 0;
+
+        const sinopsisOriginal = anime.synopsis ? anime.synopsis.split('[Written by')[0].trim() : "Sinopsis no disponible.";
         const temporada = anime.season ? `Temporada ${traduccionesTemporada[anime.season] || anime.season}` : "Actualidad";
         const estado = traduccionesEstado[anime.status] || anime.status;
+        const sinopsisTraducida = await traducirTexto(sinopsisOriginal);
 
         document.getElementById('hero-imagen').src = anime.images.jpg.large_image_url;
-        elementosAnimados[0].innerText = anime.title;
-        elementosAnimados[1].innerText = `${anime.type || 'TV'} • ${anime.year || new Date().getFullYear()} • ${temporada} • ${estado}`;
-        elementosAnimados[3].innerText = sinopsisLimpia;
+        document.getElementById('hero-titulo').innerText = anime.title;
+        document.getElementById('hero-meta').innerText = `${anime.type || 'TV'} • ${anime.year || new Date().getFullYear()} • ${temporada} • ${estado}`;
         document.getElementById('hero-rating').innerText = anime.score ? anime.score.toFixed(2) : "N/A";
-        
-        if (anime.genres && anime.genres.length > 0) {
-            elementosAnimados[2].innerHTML = anime.genres.slice(0,4).map(g => `<span class="tag">${g.name}</span>`).join('');
-        } else {
-            elementosAnimados[2].innerHTML = '';
-        }
-
+        document.getElementById('hero-tags').innerHTML = anime.genres && anime.genres.length > 0 ? anime.genres.slice(0, 4).map(g => `<span class="tag">${g.name}</span>`).join('') : '';
         document.getElementById('btn-hero-detalles').onclick = () => abrirDetalles(anime.mal_id);
-        contenedor.classList.remove('fade-out');
-    }, 500); 
+        document.getElementById('hero-sinopsis').innerText = sinopsisTraducida;
+
+        // 3. Inicia la animación de entrada
+        contenedor.style.animation = 'slide-in-right 0.4s ease-out forwards';
+        contenedor.style.opacity = 1; // Hacemos visible de nuevo
+    }, 400); // Duración debe coincidir con la animación de salida
 }
 
 // ==========================================
@@ -145,9 +169,9 @@ async function cargarDirectorio() {
     for (let i = 0; i < 12; i++) {
         skeletonHTML += `
             <div class="tarjeta-anime">
-                <div class="contenedor-portada skeleton"></div>
-                <div class="info-externa" style="padding-top: 12px;">
-                    <p class="skeleton" style="height: 1rem; width: 80%;"></p>
+                <div class="contenedor-portada skeleton" style="aspect-ratio: 2/3;"></div>
+                <div class="info-externa" style="padding: 12px 15px;">
+                    <div class="skeleton" style="height: 1.1rem; width: 80%;"></div>
                 </div>
             </div>
         `;
@@ -163,7 +187,7 @@ async function cargarDirectorio() {
             <div class="tarjeta-anime" onclick="abrirDetalles(${a.mal_id})">
                 <div class="contenedor-portada">
                     <img src="${a.images.jpg.image_url}" alt="${a.title}" loading="lazy">
-                    <span class="etiqueta-flotante">${a.type || 'Anime'}</span>
+                    <span class="etiqueta-flotante">⭐ ${a.score ? a.score.toFixed(1) : 'N/A'}</span>
                 </div>
                 <div class="info-externa">
                     <p title="${a.title}">${a.title}</p>
@@ -172,6 +196,7 @@ async function cargarDirectorio() {
         `).join('');
         
         catalogoCargado = true;
+
     } catch (error) {
         grid.innerHTML = '<p style="grid-column: 1 / -1; color: #ef4444; text-align: center;">Error al cargar el catálogo.</p>';
         catalogoCargado = false;
@@ -186,27 +211,26 @@ async function cargarHorario(dia, btnElement) {
     btnElement.classList.add('activo');
 
     const grid = document.getElementById('grid-horarios');
-    
     let skeletonHTML = '';
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 12; i++) {
         skeletonHTML += `
             <div class="tarjeta-anime">
-                <div class="contenedor-portada skeleton"></div>
-                <div class="info-externa" style="padding-top: 12px;">
-                    <p class="skeleton" style="height: 1rem; width: 80%;"></p>
+                <div class="contenedor-portada skeleton" style="aspect-ratio: 2/3;"></div>
+                <div class="info-externa" style="padding: 12px 15px;">
+                    <div class="skeleton" style="height: 1.1rem; width: 80%;"></div>
                 </div>
             </div>
         `;
     }
     grid.innerHTML = skeletonHTML;
-
+    
     try {
         const respuesta = await fetch(`https://api.jikan.moe/v4/schedules?filter=${dia}&limit=24`);
         const data = await respuesta.json();
         const animesUnicos = eliminarDuplicados(data.data);
         
         if (animesUnicos.length === 0) {
-            grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center;">No hay emisiones este día.</p>';
+            grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center;">No hay emisiones programadas para este día.</p>';
             return;
         }
 
@@ -214,13 +238,14 @@ async function cargarHorario(dia, btnElement) {
             <div class="tarjeta-anime" onclick="abrirDetalles(${a.mal_id})">
                 <div class="contenedor-portada">
                     <img src="${a.images.jpg.image_url}" alt="${a.title}" loading="lazy">
-                    <span class="etiqueta-flotante">${a.broadcast.time || 'Emisión TV'}</span>
+                    <span class="etiqueta-flotante">🕘 ${a.broadcast.time || 'N/A'}</span>
                 </div>
                 <div class="info-externa">
                     <p title="${a.title}">${a.title}</p>
                 </div>
             </div>
         `).join('');
+
     } catch (error) {
         grid.innerHTML = '<p style="grid-column: 1 / -1; color: #ef4444; text-align: center;">Error de red en horarios.</p>';
     }
@@ -295,14 +320,19 @@ async function abrirDetalles(idAnime) {
         fondoCine.style.backgroundImage = `url(${data.images.jpg.large_image_url})`;
         fondoCine.classList.add('activo');
 
-        const sinopsisLimpia = data.synopsis ? data.synopsis.split('[Written by')[0].trim() : "Sinopsis no disponible.";
+        const sinopsisOriginal = data.synopsis ? data.synopsis.split('[Written by')[0].trim() : "Sinopsis no disponible.";
+        
+        // Esperamos la traducción ANTES de actualizar la UI para evitar parpadeos
+        const sinopsisTraducida = await traducirTexto(sinopsisOriginal);
+
+        // Ahora que tenemos todo, actualizamos la UI de una vez
         const temporada = data.season ? `Temporada ${traduccionesTemporada[data.season] || data.season}` : "Actual";
         const estado = traduccionesEstado[data.status] || data.status;
 
         document.getElementById('detalle-imagen').src = data.images.jpg.large_image_url;
         document.getElementById('detalle-titulo').innerText = data.title;
         document.getElementById('detalle-meta').innerText = `${data.type || 'TV'} • ${data.year || 'N/A'} • ${temporada} • ${estado}`;
-        document.getElementById('detalle-sinopsis').innerText = sinopsisLimpia;
+        document.getElementById('detalle-sinopsis').innerText = sinopsisTraducida;
         document.getElementById('detalle-rating-valor').innerText = data.score ? data.score.toFixed(2) : "N/A";
 
         if (data.genres && data.genres.length > 0) {
@@ -316,17 +346,13 @@ async function abrirDetalles(idAnime) {
             mal_id: data.mal_id,
             title: data.title,
             image_url: data.images.jpg.large_image_url,
-            type: data.type,
-            year: data.year,
-            status: estado,
-            score: data.score
+            type: data.type, year: data.year, status: estado, score: data.score, genres: data.genres
         };
 
         // Activamos el botón de guardar
         const btnGuardar = document.querySelector('#vista-detalles .btn-secundario');
         btnGuardar.style.display = 'flex';
         btnGuardar.onclick = guardarEnBoveda;
-
     } catch (error) {
         document.getElementById('detalle-titulo').innerText = "Error de Sistema";
     }
@@ -368,33 +394,55 @@ async function guardarEnBoveda() {
 
 // Función para TRAER desde MongoDB
 async function cargarBoveda() {
-    const contenedor = document.querySelector('#vista-boveda');
+    const panelStats = document.getElementById('panel-estadisticas');
+    const gridBoveda = document.getElementById('grid-boveda');
     
     // Mostramos estado de carga
-    contenedor.innerHTML = `
-        <h2 class="titulo-pagina">Mi <span>Bóveda</span></h2>
-        <div class="boveda-vacia glass-panel-dark" style="padding: 40px; text-align: center; color: var(--acento);">
-            📡 Conectando con los servidores de tu base de datos...
-        </div>`;
+    panelStats.innerHTML = `
+        <div class="stat-caja"><div class="valor skeleton" style="height: 2rem; width: 50%; margin: 0 auto;"></div><div class="etiqueta">Total</div></div>
+        <div class="stat-caja"><div class="valor skeleton" style="height: 2rem; width: 50%; margin: 0 auto;"></div><div class="etiqueta">Puntuación Media</div></div>
+        <div class="stat-caja"><div class="valor skeleton" style="height: 2rem; width: 50%; margin: 0 auto;"></div><div class="etiqueta">Género Favorito</div></div>
+    `;
+    gridBoveda.innerHTML = `<div class="boveda-vacia glass-panel-dark" style="color: var(--acento);">📡 Sincronizando bóveda...</div>`;
     
     try {
         // Usamos la variable API_URL
         const respuesta = await fetch(`${API_URL}/api/boveda`);
         const animesGuardados = await respuesta.json();
 
+        // --- CÁLCULO DE ESTADÍSTICAS ---
+        const totalAnimes = animesGuardados.length;
+        let puntuacionMedia = 0;
+        const conteoGeneros = {};
+
+        if (totalAnimes > 0) {
+            const animesConScore = animesGuardados.filter(a => a.score);
+            puntuacionMedia = animesConScore.reduce((sum, a) => sum + a.score, 0) / (animesConScore.length || 1);
+
+            animesGuardados.forEach(a => {
+                if (a.genres) {
+                    a.genres.forEach(g => {
+                        conteoGeneros[g.name] = (conteoGeneros[g.name] || 0) + 1;
+                    });
+                }
+            });
+        }
+        const generoFavorito = Object.keys(conteoGeneros).length > 0 ? Object.entries(conteoGeneros).sort((a, b) => b[1] - a[1])[0][0] : 'N/A';
+
+        // --- RENDERIZADO DE ESTADÍSTICAS ---
+        panelStats.innerHTML = `
+            <div class="stat-caja"><div class="valor">${totalAnimes}</div><div class="etiqueta">Animes Guardados</div></div>
+            <div class="stat-caja"><div class="valor">${puntuacionMedia.toFixed(2)}</div><div class="etiqueta">Puntuación Media</div></div>
+            <div class="stat-caja"><div class="valor">${generoFavorito}</div><div class="etiqueta">Género Favorito</div></div>
+        `;
+
+        // --- RENDERIZADO DE LA BÓVEDA ---
         if (animesGuardados.length === 0) {
-            contenedor.innerHTML = `
-                <h2 class="titulo-pagina">Mi <span>Bóveda</span></h2>
-                <div class="boveda-vacia glass-panel-dark" style="padding: 40px; text-align: center;">
-                    🛡️ Tu bóveda está vacía. ¡Ve a explorar el catálogo!
-                </div>`;
+            gridBoveda.innerHTML = `<div class="boveda-vacia glass-panel-dark">🛡️ Tu bóveda está vacía. ¡Ve a explorar el catálogo!</div>`;
             return;
         }
-
-        let htmlGrid = `<h2 class="titulo-pagina">Mi <span>Bóveda</span></h2>
-                        <div class="grid-catalogo">`;
                         
-        htmlGrid += animesGuardados.map(a => `
+        const htmlGrid = animesGuardados.map(a => `
             <div class="tarjeta-anime" onclick="abrirDetalles(${a.mal_id})">
                 <div class="contenedor-portada">
                     <img src="${a.image_url}" alt="${a.title}" loading="lazy">
@@ -405,17 +453,11 @@ async function cargarBoveda() {
                 </div>
             </div>
         `).join('');
-        
-        htmlGrid += `</div>`;
-        contenedor.innerHTML = htmlGrid;
+        gridBoveda.innerHTML = htmlGrid;
 
     } catch (error) {
         console.error("Error al cargar la bóveda:", error);
-        contenedor.innerHTML = `
-            <h2 class="titulo-pagina">Mi <span>Bóveda</span></h2>
-            <div class="boveda-vacia glass-panel-dark" style="padding: 40px; text-align: center; color: #ef4444;">
-                ❌ Servidor apagado. No se pudo conectar con MongoDB.
-            </div>`;
+        gridBoveda.innerHTML = `<div class="boveda-vacia glass-panel-dark" style="color: #ef4444;">❌ Servidor apagado. No se pudo conectar con MongoDB.</div>`;
     }
 }
 
@@ -430,86 +472,51 @@ function iniciarFondoTecnologico() {
     }
     const ctx = canvas.getContext('2d');
 
-    let particlesArray;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    function setupCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    }
-    setupCanvas();
+    // Caracteres para la lluvia digital (Katakana)
+    const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
+    const alphabet = katakana;
+    const fontSize = 16;
+    const columns = canvas.width / fontSize;
 
-    // Clase para las partículas
-    class Particle {
-        constructor(x, y, directionX, directionY, size, color) {
-            this.x = x;
-            this.y = y;
-            this.directionX = directionX;
-            this.directionY = directionY;
-            this.size = size;
-            this.color = color;
-        }
-        draw() {
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2, false);
-            ctx.fillStyle = this.color;
-            ctx.fill();
-        }
-        update() {
-            if (this.x > canvas.width || this.x < 0) { this.directionX = -this.directionX; }
-            if (this.y > canvas.height || this.y < 0) { this.directionY = -this.directionY; }
-            this.x += this.directionX;
-            this.y += this.directionY;
-            this.draw();
-        }
+    const rainDrops = [];
+    for (let x = 0; x < columns; x++) {
+        rainDrops[x] = 1;
     }
 
-    function init() {
-        particlesArray = [];
-        let numberOfParticles = (canvas.height * canvas.width) / 9000;
-        for (let i = 0; i < numberOfParticles; i++) {
-            let size = (Math.random() * 2) + 1;
-            let x = (Math.random() * ((window.innerWidth - size * 2) - (size * 2)) + size * 2);
-            let y = (Math.random() * ((window.innerHeight - size * 2) - (size * 2)) + size * 2);
-            let directionX = (Math.random() * .4) - .2;
-            let directionY = (Math.random() * .4) - .2;
-            let color = '#8b5cf6'; // Usando el color de acento del tema (:root --acento)
-            particlesArray.push(new Particle(x, y, directionX, directionY, size, color));
-        }
-    }
+    const draw = () => {
+        // Fondo semi-transparente para crear el efecto de estela
+        ctx.fillStyle = 'rgba(11, 15, 25, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    function connect() {
-        for (let a = 0; a < particlesArray.length; a++) {
-            for (let b = a; b < particlesArray.length; b++) {
-                let distance = ((particlesArray[a].x - particlesArray[b].x) * (particlesArray[a].x - particlesArray[b].x)) + ((particlesArray[a].y - particlesArray[b].y) * (particlesArray[a].y - particlesArray[b].y));
-                if (distance < 14400) { // Distancia cuadrada (120px)
-                    let opacityValue = 1 - (distance / 15000);
-                    ctx.strokeStyle = `rgba(139, 92, 246, ${opacityValue})`;
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(particlesArray[a].x, particlesArray[a].y);
-                    ctx.lineTo(particlesArray[b].x, particlesArray[b].y);
-                    ctx.stroke();
-                }
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#8b5cf6'; // Usar el color de acento del CSS
+        ctx.font = `${fontSize}px monospace`;
+
+        for (let i = 0; i < rainDrops.length; i++) {
+            const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+            ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+
+            if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                rainDrops[i] = 0;
             }
+            rainDrops[i]++;
         }
-    }
+    };
 
-    function animate() {
-        requestAnimationFrame(animate);
-        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-        for (let i = 0; i < particlesArray.length; i++) {
-            particlesArray[i].update();
-        }
-        connect();
-    }
+    const intervalId = setInterval(draw, 33);
 
     window.addEventListener('resize', () => {
-        setupCanvas();
-        init();
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        // Recalcular columnas y reiniciar gotas
+        const newColumns = canvas.width / fontSize;
+        rainDrops.length = 0; // Vaciar el array
+        for (let x = 0; x < newColumns; x++) {
+            rainDrops[x] = 1;
+        }
     });
-
-    init();
-    animate();
 }
 
 // ==========================================
@@ -527,6 +534,22 @@ function iniciarUtilidadesUI() {
     });
 
     btnScroll.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+    // Lógica para el menú móvil
+    const btnMenuMovil = document.getElementById('btn-menu-movil');
+    const overlayMovil = document.getElementById('menu-movil-overlay');
+
+    btnMenuMovil.addEventListener('click', () => {
+        btnMenuMovil.classList.toggle('abierto');
+        overlayMovil.classList.toggle('abierto');
+    });
+}
+
+function cerrarMenuMovil() {
+    const btnMenuMovil = document.getElementById('btn-menu-movil');
+    const overlayMovil = document.getElementById('menu-movil-overlay');
+    btnMenuMovil.classList.remove('abierto');
+    overlayMovil.classList.remove('abierto');
 }
 
 function mostrarToast(mensaje, tipo = 'info') {
@@ -570,8 +593,8 @@ function iniciarApp() {
 
             // 5. Limpiar el DOM eliminando el splash screen después de la animación
             setTimeout(() => {
-                splashScreen.remove();
-            }, 1300); // Debe ser mayor que la transición de opacidad del splash
+                if (splashScreen) splashScreen.remove();
+            }, 1500); // Debe ser mayor que la transición de opacidad del splash
         }, { once: true }); // El evento solo se dispara una vez
     }
 };
