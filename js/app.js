@@ -1,10 +1,10 @@
-const API_URL = 'https://anisync-backend-bpfv.onrender.com'; // Cuando Render nos dé el link, cambiaremos esto aquí
+const API_URL = 'https://anisync-backend-bpfv.onrender.com';
 
 let temporizadorBusqueda;
 let vistaAnterior = 'vista-inicio'; 
 let catalogoCargado = false; 
 let horariosCargados = false;
-let animeActualParaBoveda = {}; // Almacena el anime actual para enviarlo a Python
+let animeActualParaBoveda = {}; 
 
 let heroAnimes = [];
 let indiceHeroActual = 0;
@@ -12,7 +12,7 @@ let intervaloHero;
 
 const traduccionesTemporada = { "spring": "Primavera", "summer": "Verano", "fall": "Otoño", "winter": "Invierno" };
 const traduccionesEstado = { "Currently Airing": "En emisión", "Finished Airing": "Finalizado", "Not yet aired": "Próximamente" };
-const translateCache = {}; // Caché para almacenar traducciones
+const translateCache = {}; 
 
 // Función para barajar un array (algoritmo Fisher-Yates)
 function barajarArray(array) {
@@ -36,14 +36,14 @@ function eliminarDuplicados(animesArray) {
 // Función para traducir texto usando MyMemory API
 async function traducirTexto(texto, langpair = 'en|es') {
     if (!texto) return "Sinopsis no disponible.";
-    if (translateCache[texto]) return translateCache[texto]; // Devolver de la caché si ya existe
+    if (translateCache[texto]) return translateCache[texto]; 
 
     try {
         const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(texto)}&langpair=${langpair}`);
         const data = await response.json();
         if (data.responseStatus === 200 && data.responseData.translatedText) {
             const translated = data.responseData.translatedText;
-            translateCache[texto] = translated; // Almacenar en caché
+            translateCache[texto] = translated; 
             return translated;
         } else {
             return `${texto} (Traducción no disponible)`;
@@ -55,8 +55,6 @@ async function traducirTexto(texto, langpair = 'en|es') {
 
 // 1. Navegación SPA
 function cambiarVista(idVista) {
-    // Si navegamos a cualquier vista que no sea 'detalles', la guardamos como anterior
-    // y nos aseguramos de ocultar el fondo de cine.
     if(idVista !== 'vista-detalles') {
         vistaAnterior = idVista; 
         document.getElementById('detalle-fondo-cine').classList.remove('activo');
@@ -65,7 +63,6 @@ function cambiarVista(idVista) {
     document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
     document.getElementById(idVista).classList.add('activa');
     
-    // Actualiza el estado activo de la barra de navegación inferior
     document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
         if (btn.dataset.vista === idVista) {
             btn.classList.add('activo');
@@ -84,7 +81,6 @@ function cambiarVista(idVista) {
         cargarHorario('monday', document.querySelector('.menu-dias button'));
         horariosCargados = true;
     } else if (idVista === 'vista-boveda') {
-        // Carga la bóveda cada vez que entras para asegurar que esté actualizada
         cargarBoveda();
     }
 }
@@ -98,18 +94,16 @@ function volverDeDetalles() {
 // ==========================================
 async function iniciarHeroRotativo() {
     try {
-        // Pedimos más animes para tener variedad
         const respuesta = await fetch('https://api.jikan.moe/v4/top/anime?filter=airing&limit=25');
         const data = await respuesta.json();
         
-        // Filtramos y luego barajamos los resultados para que el inicio sea siempre diferente
         const animesFiltrados = eliminarDuplicados(data.data).filter(a => a.synopsis && a.images.jpg.large_image_url);
         heroAnimes = barajarArray(animesFiltrados);
         
         if (heroAnimes.length > 0) {
             actualizarUIHero();
-            if(intervaloHero) clearInterval(intervaloHero); // Limpiamos el intervalo anterior si existe
-            intervaloHero = setInterval(cambiarHeroSiguiente, 8000); // Aumentamos un poco el tiempo
+            if(intervaloHero) clearInterval(intervaloHero); 
+            intervaloHero = setInterval(cambiarHeroSiguiente, 8000); 
         }
     } catch (error) {
         console.error("Error cargando Hero:", error);
@@ -117,7 +111,7 @@ async function iniciarHeroRotativo() {
         document.getElementById('hero-titulo').innerText = "Error de Sincronización";
         document.getElementById('hero-meta').innerText = "Fallo en la conexión con la API";
         document.getElementById('hero-sinopsis').innerText = "No se pudo cargar el anime destacado. Esto puede deberse a un problema con la red o con el servidor de Jikan. Por favor, intenta recargar la página más tarde.";
-        document.getElementById('hero-imagen').src = "https://via.placeholder.com/280x420/111827/ef4444?text=Error";
+        document.getElementById('hero-imagen').src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="; // Pixel transparente de respaldo
         document.getElementById('hero-rating').innerText = "---";
         document.getElementById('hero-tags').innerHTML = '<span class="tag">Offline</span>';
         contenedor.classList.remove('fade-out');
@@ -126,15 +120,12 @@ async function iniciarHeroRotativo() {
 
 function cambiarHeroSiguiente() {
     indiceHeroActual = (indiceHeroActual + 1) % heroAnimes.length;
-
-    // Pre-cargamos la imagen del siguiente anime para que la transición sea instantánea
     const siguienteIndice = (indiceHeroActual + 1) % heroAnimes.length;
     const siguienteAnime = heroAnimes[siguienteIndice];
     if (siguienteAnime) {
         const img = new Image();
         img.src = siguienteAnime.images.jpg.large_image_url;
     }
-
     actualizarUIHero();
 }
 
@@ -142,12 +133,9 @@ function actualizarUIHero() {
     const anime = heroAnimes[indiceHeroActual];
     const contenedor = document.getElementById('hero-contenedor');
 
-    // 1. Inicia la animación de salida
     contenedor.style.animation = 'slide-out-left 0.4s ease-out forwards';
 
-    // 2. Espera a que termine la animación para cambiar el contenido
     setTimeout(async () => {
-        // Ocultamos el contenedor temporalmente para evitar parpadeos mientras se actualiza
         contenedor.style.opacity = 0;
 
         const sinopsisOriginal = anime.synopsis ? anime.synopsis.split('[Written by')[0].trim() : "Sinopsis no disponible.";
@@ -163,10 +151,9 @@ function actualizarUIHero() {
         document.getElementById('btn-hero-detalles').onclick = () => abrirDetalles(anime.mal_id);
         document.getElementById('hero-sinopsis').innerText = sinopsisTraducida;
 
-        // 3. Inicia la animación de entrada
         contenedor.style.animation = 'slide-in-right 0.4s ease-out forwards';
-        contenedor.style.opacity = 1; // Hacemos visible de nuevo
-    }, 400); // Duración debe coincidir con la animación de salida
+        contenedor.style.opacity = 1; 
+    }, 400); 
 }
 
 // ==========================================
@@ -306,7 +293,7 @@ async function abrirDetalles(idAnime) {
     document.getElementById('buscar').value = ''; 
     cambiarVista('vista-detalles');
     
-    document.getElementById('detalle-imagen').src = "https://via.placeholder.com/280x420/111827/cbd5e1?text=Cargando...";
+    document.getElementById('detalle-imagen').src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
     document.getElementById('detalle-titulo').innerHTML = '<div class="skeleton" style="height: 2.2rem; width: 70%; margin-bottom: 8px;"></div>';
     document.getElementById('detalle-meta').innerHTML = '<div class="skeleton" style="height: 0.9rem; width: 90%; margin-bottom: 15px;"></div>';
     document.getElementById('detalle-tags').innerHTML = '<div class="skeleton" style="height: 30px; width: 80%; margin-bottom: 15px;"></div>';
@@ -324,17 +311,13 @@ async function abrirDetalles(idAnime) {
         const respuesta = await fetch(`https://api.jikan.moe/v4/anime/${idAnime}/full`);
         const data = (await respuesta.json()).data;
 
-        // MODO CINE: Activar fondo con la imagen del anime
         const fondoCine = document.getElementById('detalle-fondo-cine');
         fondoCine.style.backgroundImage = `url(${data.images.jpg.large_image_url})`;
         fondoCine.classList.add('activo');
 
         const sinopsisOriginal = data.synopsis ? data.synopsis.split('[Written by')[0].trim() : "Sinopsis no disponible.";
-        
-        // Esperamos la traducción ANTES de actualizar la UI para evitar parpadeos
         const sinopsisTraducida = await traducirTexto(sinopsisOriginal);
 
-        // Ahora que tenemos todo, actualizamos la UI de una vez
         const temporada = data.season ? `Temporada ${traduccionesTemporada[data.season] || data.season}` : "Actual";
         const estado = traduccionesEstado[data.status] || data.status;
 
@@ -350,7 +333,6 @@ async function abrirDetalles(idAnime) {
             document.getElementById('detalle-tags').innerHTML = '<span class="tag">Sin Clasificar</span>';
         }
 
-        // Empaquetamos los datos para enviarlos a Python / MongoDB
         animeActualParaBoveda = {
             mal_id: data.mal_id,
             title: data.title,
@@ -358,7 +340,6 @@ async function abrirDetalles(idAnime) {
             type: data.type, year: data.year, status: estado, score: data.score, genres: data.genres
         };
 
-        // Activamos el botón de guardar
         const btnGuardar = document.querySelector('#vista-detalles .btn-secundario');
         btnGuardar.style.display = 'flex';
         btnGuardar.onclick = guardarEnBoveda;
@@ -374,7 +355,6 @@ async function guardarEnBoveda() {
     btn.disabled = true;
 
     try {
-        // Usamos la variable API_URL que configuramos arriba
         const respuesta = await fetch(`${API_URL}/api/guardar`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -393,7 +373,6 @@ async function guardarEnBoveda() {
         console.error("Error al conectar con el backend:", error);
         mostrarToast("❌ No se pudo conectar al servidor", "error");
     } finally {
-        // Re-habilita el botón después de un corto tiempo, la notificación da el feedback principal
         setTimeout(() => {
             btn.innerText = "➕ Agregar a Bóveda";
             btn.disabled = false;
@@ -406,7 +385,6 @@ async function cargarBoveda() {
     const panelStats = document.getElementById('panel-estadisticas');
     const gridBoveda = document.getElementById('grid-boveda');
     
-    // Mostramos estado de carga
     panelStats.innerHTML = `
         <div class="stat-caja"><div class="valor skeleton" style="height: 2rem; width: 50%; margin: 0 auto;"></div><div class="etiqueta">Total</div></div>
         <div class="stat-caja"><div class="valor skeleton" style="height: 2rem; width: 50%; margin: 0 auto;"></div><div class="etiqueta">Puntuación Media</div></div>
@@ -415,11 +393,9 @@ async function cargarBoveda() {
     gridBoveda.innerHTML = `<div class="boveda-vacia glass-panel-dark" style="color: var(--acento);">📡 Sincronizando bóveda...</div>`;
     
     try {
-        // Usamos la variable API_URL
         const respuesta = await fetch(`${API_URL}/api/boveda`);
         const animesGuardados = await respuesta.json();
 
-        // --- CÁLCULO DE ESTADÍSTICAS ---
         const totalAnimes = animesGuardados.length;
         let puntuacionMedia = 0;
         const conteoGeneros = {};
@@ -438,14 +414,12 @@ async function cargarBoveda() {
         }
         const generoFavorito = Object.keys(conteoGeneros).length > 0 ? Object.entries(conteoGeneros).sort((a, b) => b[1] - a[1])[0][0] : 'N/A';
 
-        // --- RENDERIZADO DE ESTADÍSTICAS ---
         panelStats.innerHTML = `
             <div class="stat-caja"><div class="valor">${totalAnimes}</div><div class="etiqueta">Animes Guardados</div></div>
             <div class="stat-caja"><div class="valor">${puntuacionMedia.toFixed(2)}</div><div class="etiqueta">Puntuación Media</div></div>
             <div class="stat-caja"><div class="valor">${generoFavorito}</div><div class="etiqueta">Género Favorito</div></div>
         `;
 
-        // --- RENDERIZADO DE LA BÓVEDA ---
         if (animesGuardados.length === 0) {
             gridBoveda.innerHTML = `<div class="boveda-vacia glass-panel-dark">🛡️ Tu bóveda está vacía. ¡Ve a explorar el catálogo!</div>`;
             return;
@@ -475,32 +449,24 @@ async function cargarBoveda() {
 // ==========================================
 function iniciarFondoTecnologico() {
     const canvas = document.getElementById('fondo-tecnologico');
-    if (!canvas) {
-        console.error('No se encontró el elemento canvas con id "fondo-tecnologico".');
-        return;
-    }
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // Caracteres para la lluvia digital (Katakana)
     const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
     const alphabet = katakana;
     const fontSize = 16;
     const columns = canvas.width / fontSize;
 
     const rainDrops = [];
-    for (let x = 0; x < columns; x++) {
-        rainDrops[x] = 1;
-    }
+    for (let x = 0; x < columns; x++) { rainDrops[x] = 1; }
 
     const draw = () => {
-        // Fondo semi-transparente para crear el efecto de estela
         ctx.fillStyle = 'rgba(11, 15, 25, 0.05)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#8b5cf6'; // Usar el color de acento del CSS
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#8b5cf6'; 
         ctx.font = `${fontSize}px monospace`;
 
         for (let i = 0; i < rainDrops.length; i++) {
@@ -514,17 +480,14 @@ function iniciarFondoTecnologico() {
         }
     };
 
-    const intervalId = setInterval(draw, 33);
+    setInterval(draw, 33);
 
     window.addEventListener('resize', () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        // Recalcular columnas y reiniciar gotas
         const newColumns = canvas.width / fontSize;
-        rainDrops.length = 0; // Vaciar el array
-        for (let x = 0; x < newColumns; x++) {
-            rainDrops[x] = 1;
-        }
+        rainDrops.length = 0; 
+        for (let x = 0; x < newColumns; x++) { rainDrops[x] = 1; }
     });
 }
 
@@ -544,7 +507,6 @@ function iniciarUtilidadesUI() {
 
     btnScroll.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-    // Lógica para la barra de navegación inferior
     document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             cambiarVista(btn.dataset.vista);
@@ -561,9 +523,7 @@ function mostrarToast(mensaje, tipo = 'info') {
     toast.textContent = mensaje;
     container.appendChild(toast);
 
-    setTimeout(() => {
-        toast.remove();
-    }, 4500); // Coincide con la duración de la animación + tiempo en pantalla
+    setTimeout(() => { toast.remove(); }, 4500); 
 }
 
 // INICIO DEL SISTEMA
@@ -575,27 +535,21 @@ function iniciarApp() {
 
     if (splashScreen && logoGrande) {
         splashScreen.addEventListener('click', () => {
-            // 1. Animar el logo a su posición final
             logoGrande.classList.add('minimizado');
-            
-            // 2. Ocultar la pantalla de bienvenida
             splashScreen.classList.add('oculto');
 
-            // 3. Mostrar el contenido principal
             navbar.classList.remove('contenido-oculto');
             mainContent.classList.remove('contenido-oculto');
             
-            // 4. Cargar el contenido dinámico
             cambiarVista('vista-inicio');
             iniciarHeroRotativo();
             iniciarFondoTecnologico();
             iniciarUtilidadesUI();
 
-            // 5. Limpiar el DOM eliminando el splash screen después de la animación
             setTimeout(() => {
                 if (splashScreen) splashScreen.remove();
-            }, 1500); // Debe ser mayor que la transición de opacidad del splash
-        }, { once: true }); // El evento solo se dispara una vez
+            }, 1500); 
+        }, { once: true }); 
     }
 };
 
