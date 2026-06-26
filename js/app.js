@@ -37,6 +37,10 @@ async function traducirTexto(texto, langpair = 'en|es') {
 
     try {
         const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(texto)}&langpair=${langpair}`);
+        
+        // 🔧 MEJORA (Feedback Profesor): Validar que el servidor de traducción responda correctamente
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
         const data = await response.json();
         if (data.responseStatus === 200 && data.responseData.translatedText) {
             const translated = data.responseData.translatedText;
@@ -46,6 +50,7 @@ async function traducirTexto(texto, langpair = 'en|es') {
             return `${texto} (Traducción no disponible)`;
         }
     } catch (error) {
+        console.error("Fallo en la traducción:", error);
         return `${texto} (Error de traducción)`;
     }
 }
@@ -67,7 +72,6 @@ function cambiarVista(idVista) {
     document.getElementById('buscar').value = ''; 
     document.getElementById('lista-resultados').style.display = 'none';
 
-    // BLOQUEO MAESTRO DE SCROLL PARA EL INICIO
     if (idVista === 'vista-inicio') {
         document.body.style.overflow = 'hidden';
         window.scrollTo(0,0);
@@ -92,13 +96,15 @@ function volverDeDetalles() {
 async function iniciarHeroRotativo() {
     try {
         const respuesta = await fetch('https://api.jikan.moe/v4/top/anime?filter=airing&limit=25');
-        const data = await respuesta.json();
         
+        // 🔧 MEJORA: Evitar .json() si la API de Jikan está caída
+        if (!respuesta.ok) throw new Error(`Error en Jikan API (Hero): ${respuesta.status}`);
+        
+        const data = await respuesta.json();
         const animesFiltrados = eliminarDuplicados(data.data).filter(a => a.synopsis && a.images.jpg.large_image_url);
         heroAnimes = barajarArray(animesFiltrados);
         
         if (heroAnimes.length > 0) {
-            // Pre-traducimos el primero antes de mostrarlo
             const primerAnime = heroAnimes[0];
             const sinopsisOriginal = primerAnime.synopsis ? primerAnime.synopsis.split('[Written by')[0].trim() : "Sinopsis no disponible.";
             primerAnime.sinopsisTraducida = await traducirTexto(sinopsisOriginal);
@@ -116,7 +122,6 @@ async function cambiarHeroSiguiente() {
     const siguienteIndice = (indiceHeroActual + 1) % heroAnimes.length;
     const siguienteAnime = heroAnimes[siguienteIndice];
     
-    // LA MAGIA: Pre-carga secreta mientras el usuario sigue viendo el anime actual
     if (siguienteAnime) {
         const img = new Image();
         img.src = siguienteAnime.images.jpg.large_image_url;
@@ -127,7 +132,6 @@ async function cambiarHeroSiguiente() {
         }
     }
     
-    // Una vez descargado todo, actualizamos
     indiceHeroActual = siguienteIndice;
     actualizarUIHero();
 }
@@ -163,16 +167,16 @@ async function cargarDirectorio() {
     const grid = document.getElementById('grid-directorio');
     let skeletonHTML = '';
     for (let i = 0; i < 12; i++) {
-        skeletonHTML += `
-            <div class="tarjeta-anime">
-                <div class="contenedor-portada skeleton" style="aspect-ratio: 2/3;"></div>
-                <div class="info-externa" style="padding: 12px 15px;"><div class="skeleton" style="height: 1.1rem; width: 80%;"></div></div>
-            </div>`;
+        skeletonHTML += `<div class="tarjeta-anime"><div class="contenedor-portada skeleton" style="aspect-ratio: 2/3;"></div><div class="info-externa" style="padding: 12px 15px;"><div class="skeleton" style="height: 1.1rem; width: 80%;"></div></div></div>`;
     }
     grid.innerHTML = skeletonHTML;
 
     try {
         const respuesta = await fetch('https://api.jikan.moe/v4/seasons/now?limit=24');
+        
+        // 🔧 MEJORA: Evitar .json() si la API está caída
+        if (!respuesta.ok) throw new Error(`Catálogo inalcanzable. Status: ${respuesta.status}`);
+
         const data = await respuesta.json();
         const animesUnicos = eliminarDuplicados(data.data);
         
@@ -186,7 +190,10 @@ async function cargarDirectorio() {
             </div>
         `).join('');
         catalogoCargado = true;
-    } catch (error) { grid.innerHTML = '<p style="text-align: center;">Error al cargar el catálogo.</p>'; }
+    } catch (error) { 
+        console.error("Error en Catálogo:", error);
+        grid.innerHTML = '<p style="text-align: center; color: #ef4444;">Error de red al cargar el catálogo.</p>'; 
+    }
 }
 
 // ==========================================
@@ -201,6 +208,10 @@ async function cargarHorario(dia, btnElement) {
     
     try {
         const respuesta = await fetch(`https://api.jikan.moe/v4/schedules?filter=${dia}&limit=24`);
+        
+        // 🔧 MEJORA: Control de errores HTTP en Horarios
+        if (!respuesta.ok) throw new Error(`Error en la carga de horarios: ${respuesta.status}`);
+
         const data = await respuesta.json();
         const animesUnicos = eliminarDuplicados(data.data);
         
@@ -215,7 +226,10 @@ async function cargarHorario(dia, btnElement) {
                 <div class="info-externa"><p title="${a.title}">${a.title}</p></div>
             </div>
         `).join('');
-    } catch (error) { grid.innerHTML = '<p style="text-align: center;">Error de red en horarios.</p>'; }
+    } catch (error) { 
+        console.error("Error en Horarios:", error);
+        grid.innerHTML = '<p style="text-align: center; color: #ef4444;">Error de red en horarios.</p>'; 
+    }
 }
 
 // ==========================================
@@ -233,6 +247,10 @@ document.getElementById('buscar').addEventListener('input', (e) => {
         temporizadorBusqueda = setTimeout(async () => {
             try {
                 const respuesta = await fetch(`https://api.jikan.moe/v4/anime?q=${query}&limit=5`);
+                
+                // 🔧 MEJORA: Prevenir parseo si la búsqueda colapsa
+                if (!respuesta.ok) throw new Error('Búsqueda fallida');
+
                 const data = await respuesta.json();
                 if (data.data.length === 0) { lista.innerHTML = `<p style="padding: 10px;">No hay resultados.</p>`; return; }
                 
@@ -242,7 +260,9 @@ document.getElementById('buscar').addEventListener('input', (e) => {
                         <div class="tarjeta-busqueda-info"><h4>${anime.title}</h4><span>${anime.year || 'TV Anime'}</span></div>
                     </div>
                 `).join('');
-            } catch (error) { lista.innerHTML = `<p style="padding: 10px;">Error de red.</p>`; }
+            } catch (error) { 
+                lista.innerHTML = `<p style="padding: 10px; color: #ef4444;">Error en la red.</p>`; 
+            }
         }, 400); 
     } else { lista.style.display = 'none'; }
 });
@@ -265,6 +285,10 @@ async function abrirDetalles(idAnime) {
 
     try {
         const respuesta = await fetch(`https://api.jikan.moe/v4/anime/${idAnime}/full`);
+        
+        // 🔧 MEJORA: Validar Detalles
+        if (!respuesta.ok) throw new Error(`Detalles no encontrados: ${respuesta.status}`);
+
         const data = (await respuesta.json()).data;
 
         const fondoCine = document.getElementById('detalle-fondo-cine');
@@ -295,7 +319,10 @@ async function abrirDetalles(idAnime) {
         const btnGuardar = document.querySelector('#vista-detalles .btn-secundario');
         btnGuardar.style.display = 'flex';
         btnGuardar.onclick = guardarEnBoveda;
-    } catch (error) { document.getElementById('detalle-titulo').innerText = "Error de Sistema"; }
+    } catch (error) { 
+        console.error("Fallo al abrir detalles", error);
+        document.getElementById('detalle-titulo').innerText = "Error de Sistema. Intenta más tarde."; 
+    }
 }
 
 async function guardarEnBoveda() {
@@ -308,6 +335,10 @@ async function guardarEnBoveda() {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(animeActualParaBoveda)
         });
+        
+        // 🔧 MEJORA: Protegemos contra caídas 500 del servidor de Render
+        if (!respuesta.ok && respuesta.status !== 400) throw new Error("Fallo en Render Backend");
+
         const resultado = await respuesta.json();
 
         if (respuesta.ok && resultado.status === 'ok') mostrarToast("✔️ Guardado en tu Bóveda", "success");
@@ -320,6 +351,35 @@ async function guardarEnBoveda() {
     }
 }
 
+// 🔧 AÑADIDO: Motor de borrado para eliminar animes de MongoDB (CRUD Completo)
+async function eliminarDeBoveda(event, mal_id) {
+    event.stopPropagation(); // Evita que se abran los detalles al presionar el tacho
+
+    const tarjeta = event.target.closest('.tarjeta-anime');
+    tarjeta.style.opacity = '0.5'; // Feedback visual rápido
+
+    try {
+        const respuesta = await fetch(`${API_URL}/api/eliminar/${mal_id}`, { method: 'DELETE' });
+        
+        // 🔧 MEJORA: Validar el DELETE
+        if (!respuesta.ok) throw new Error("Fallo borrando en backend");
+
+        const resultado = await respuesta.json();
+
+        if (respuesta.ok && resultado.status === 'ok') {
+            mostrarToast("🗑️ Anime eliminado de la bóveda", "success");
+            cargarBoveda(); // Recargamos para actualizar las estadísticas (Puntuación, Géneros)
+        } else {
+            mostrarToast("Error al eliminar", "error");
+            tarjeta.style.opacity = '1';
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarToast("❌ No se pudo conectar al servidor", "error");
+        tarjeta.style.opacity = '1';
+    }
+}
+
 async function cargarBoveda() {
     const panelStats = document.getElementById('panel-estadisticas');
     const gridBoveda = document.getElementById('grid-boveda');
@@ -328,6 +388,10 @@ async function cargarBoveda() {
     
     try {
         const respuesta = await fetch(`${API_URL}/api/boveda`);
+        
+        // 🔧 MEJORA: Validar que Render esté en línea antes de parsear
+        if (!respuesta.ok) throw new Error("Render Backend inalcanzable");
+
         const animesGuardados = await respuesta.json();
 
         const totalAnimes = animesGuardados.length;
@@ -355,11 +419,13 @@ async function cargarBoveda() {
             return;
         }
                         
+        // 🔧 AÑADIDO: Inyectamos el botón de Eliminar (Tacho de basura) en las tarjetas
         gridBoveda.innerHTML = animesGuardados.map(a => `
             <div class="tarjeta-anime" onclick="abrirDetalles(${a.mal_id})">
                 <div class="contenedor-portada">
                     <img src="${a.image_url}" alt="${a.title}" loading="lazy">
                     <span class="etiqueta-flotante" style="background: var(--acento); color: #000;">Guardado</span>
+                    <button class="btn-eliminar" onclick="eliminarDeBoveda(event, ${a.mal_id})" title="Eliminar anime">🗑️</button>
                 </div>
                 <div class="info-externa"><p title="${a.title}">${a.title}</p></div>
             </div>
