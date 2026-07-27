@@ -23,18 +23,24 @@ API_URL = os.environ.get("API_URL", "https://anisync-backend-bpfv.onrender.com")
 ANILIST_URL = "https://graphql.anilist.co"
 TIMEOUT_SEGUNDOS = 20
 
-QUERY_ANILIST = """
-query ($ids: [Int]) {
-    Page(perPage: 50) {
-        media(id_in: $ids, type: ANIME) {
-            id
-            episodes
-            status
-            nextAiringEpisode { episode }
-        }
-    }
-}
-"""
+def _query_anilist(campo_filtro):
+    return f"""
+    query ($ids: [Int]) {{
+        Page(perPage: 50) {{
+            media({campo_filtro}: $ids, type: ANIME) {{
+                id
+                idMal
+                episodes
+                status
+                nextAiringEpisode {{ episode }}
+            }}
+        }}
+    }}
+    """
+
+
+QUERY_POR_ID = _query_anilist("id_in")
+QUERY_POR_ID_MAL = _query_anilist("idMal_in")
 
 
 def solicitar_http(url, metodo="GET", cuerpo=None):
@@ -53,15 +59,40 @@ def obtener_boveda():
     return solicitar_http(f"{API_URL}/api/boveda")
 
 
-def consultar_anilist_batch(ids):
+def _prioridad(media):
+    # Para desambiguar cuando varios títulos de AniList comparten el mismo idMal:
+    # preferimos el que ya tiene datos de episodios utilizables.
+    return 1 if episodios_disponibles(media) is not None else 0
+
+
+def _consultar_por_clave(ids, query, clave):
     resultado = {}
     for inicio in range(0, len(ids), 50):
         lote = ids[inicio:inicio + 50]
-        cuerpo = {"query": QUERY_ANILIST, "variables": {"ids": lote}}
+        cuerpo = {"query": query, "variables": {"ids": lote}}
         respuesta = solicitar_http(ANILIST_URL, metodo="POST", cuerpo=cuerpo)
         for media in respuesta["data"]["Page"]["media"]:
-            resultado[media["id"]] = media
+            valor_clave = media.get(clave)
+            if valor_clave is None:
+                continue
+            existente = resultado.get(valor_clave)
+            if existente is None or _prioridad(media) > _prioridad(existente):
+                resultado[valor_clave] = media
     return resultado
+
+
+def consultar_anilist_batch(ids):
+    # La Bóveda mezcla dos generaciones de datos: los ids "mal_id" guardados antes
+    # de la migración a AniList son en realidad IDs de MyAnimeList (idMal en AniList),
+    # los guardados después son el id nativo de AniList. Probamos primero como id
+    # nativo y, para lo que no matchea, hacemos un segundo intento como idMal.
+    encontrados = _consultar_por_clave(ids, QUERY_POR_ID, "id")
+
+    pendientes = [i for i in ids if i not in encontrados]
+    if pendientes:
+        encontrados.update(_consultar_por_clave(pendientes, QUERY_POR_ID_MAL, "idMal"))
+
+    return encontrados
 
 
 def episodios_disponibles(media):
