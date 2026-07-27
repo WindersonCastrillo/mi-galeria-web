@@ -377,6 +377,10 @@ async function abrirDetalles(idAnime) {
     document.getElementById('buscar').value = '';
     cambiarVista('vista-detalles');
 
+    // Si el anime está en la Bóveda con un badge de "nuevo episodio", lo apagamos al verlo.
+    // Si no está guardado, el backend simplemente responde 404 y lo ignoramos.
+    fetch(`${API_URL}/api/boveda/${idAnime}/marcar-visto`, { method: 'PATCH' }).catch(() => {});
+
     document.getElementById('detalle-imagen').src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
     document.getElementById('detalle-titulo').innerHTML = '<div class="skeleton" style="height: 2.2rem; width: 70%; margin-bottom: 8px;"></div>';
     document.getElementById('detalle-meta').innerHTML = '<div class="skeleton" style="height: 0.9rem; width: 90%; margin-bottom: 15px;"></div>';
@@ -542,6 +546,7 @@ async function cargarBoveda() {
                 <div class="contenedor-portada">
                     <img src="${a.image_url}" alt="${a.title}" loading="lazy">
                     <span class="etiqueta-flotante" style="background: var(--acento); color: #000;">Guardado</span>
+                    ${a.tiene_novedad ? '<span class="etiqueta-flotante etiqueta-novedad">🆕 Nuevo</span>' : ''}
                     <button class="btn-eliminar" onclick="eliminarDeBoveda(event, ${a.mal_id})" title="Eliminar anime">🗑️</button>
                 </div>
                 <div class="info-externa"><p title="${a.title}">${a.title}</p></div>

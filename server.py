@@ -39,6 +39,31 @@ def eliminar_anime(mal_id):
         return jsonify({"mensaje": "Anime no encontrado en la bóveda", "status": "no_encontrado"}), 404
     return jsonify({"mensaje": "Anime eliminado con éxito", "status": "ok"}), 200
 
+@app.route('/api/boveda/<int:mal_id>/episodio', methods=['PATCH'])
+def actualizar_episodio(mal_id):
+    # Usado por el script de seguimiento (scripts/revisar_novedades.py) para
+    # guardar el último episodio conocido y marcar si hay novedad sin ver.
+    datos = request.json or {}
+    campos = {}
+    if "ultimo_episodio_visto" in datos:
+        campos["ultimo_episodio_visto"] = datos["ultimo_episodio_visto"]
+    if "tiene_novedad" in datos:
+        campos["tiene_novedad"] = datos["tiene_novedad"]
+
+    resultado = coleccion_boveda.update_one({"mal_id": mal_id}, {"$set": campos})
+    if resultado.matched_count == 0:
+        return jsonify({"mensaje": "Anime no encontrado en la bóveda", "status": "no_encontrado"}), 404
+    return jsonify({"mensaje": "Episodio actualizado", "status": "ok"}), 200
+
+@app.route('/api/boveda/<int:mal_id>/marcar-visto', methods=['PATCH'])
+def marcar_visto(mal_id):
+    # Llamado por el frontend cuando el usuario abre un anime desde la Bóveda,
+    # para apagar el badge de "nuevo episodio".
+    resultado = coleccion_boveda.update_one({"mal_id": mal_id}, {"$set": {"tiene_novedad": False}})
+    if resultado.matched_count == 0:
+        return jsonify({"mensaje": "Anime no encontrado en la bóveda", "status": "no_encontrado"}), 404
+    return jsonify({"mensaje": "Marcado como visto", "status": "ok"}), 200
+
 if __name__ == '__main__':
     print("Iniciando los servidores de AniSync Toshokan...")
     app.run(debug=True, port=5000)

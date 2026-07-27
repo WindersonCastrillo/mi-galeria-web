@@ -119,6 +119,7 @@ img { color: transparent; }
 .contenedor-portada { position: relative; }
 .contenedor-portada img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; }
 .etiqueta-flotante { position: absolute; top: 8px; right: 8px; background: rgba(11, 15, 25, 0.9); padding: 4px 10px; font-size: 0.75rem; font-weight: bold; border-radius: 20px; color: #f8fafc; border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px); }
+.etiqueta-novedad { top: 40px; background: #ef4444; color: #fff; border-color: rgba(255, 255, 255, 0.2); }
 .info-externa { padding: 12px 15px; }
 .info-externa p { margin: 0; font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--texto); }
 
