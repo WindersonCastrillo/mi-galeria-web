@@ -32,6 +32,13 @@ def obtener_boveda():
     animes = list(coleccion_boveda.find({}, {'_id': 0}))
     return jsonify(animes), 200
 
+@app.route('/api/eliminar/<int:mal_id>', methods=['DELETE'])
+def eliminar_anime(mal_id):
+    resultado = coleccion_boveda.delete_one({"mal_id": mal_id})
+    if resultado.deleted_count == 0:
+        return jsonify({"mensaje": "Anime no encontrado en la bóveda", "status": "no_encontrado"}), 404
+    return jsonify({"mensaje": "Anime eliminado con éxito", "status": "ok"}), 200
+
 if __name__ == '__main__':
     print("Iniciando los servidores de AniSync Toshokan...")
     app.run(debug=True, port=5000)

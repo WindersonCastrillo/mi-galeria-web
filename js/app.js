@@ -1,18 +1,19 @@
 const API_URL = 'https://anisync-backend-bpfv.onrender.com';
+const ANILIST_URL = 'https://graphql.anilist.co';
 
 let temporizadorBusqueda;
-let vistaAnterior = 'vista-inicio'; 
-let catalogoCargado = false; 
+let vistaAnterior = 'vista-inicio';
+let catalogoCargado = false;
 let horariosCargados = false;
-let animeActualParaBoveda = {}; 
+let animeActualParaBoveda = {};
 
 let heroAnimes = [];
 let indiceHeroActual = 0;
 let intervaloHero;
 
 const traduccionesTemporada = { "spring": "Primavera", "summer": "Verano", "fall": "Otoño", "winter": "Invierno" };
-const traduccionesEstado = { "Currently Airing": "En emisión", "Finished Airing": "Finalizado", "Not yet aired": "Próximamente" };
-const translateCache = {}; 
+const traduccionesEstado = { "RELEASING": "En emisión", "FINISHED": "Finalizado", "NOT_YET_RELEASED": "Próximamente", "CANCELLED": "Cancelado", "HIATUS": "En pausa" };
+const translateCache = {};
 
 function barajarArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
@@ -25,26 +26,88 @@ function barajarArray(array) {
 function eliminarDuplicados(animesArray) {
     const vistos = new Set();
     return animesArray.filter(anime => {
-        if (vistos.has(anime.mal_id)) return false;
-        vistos.add(anime.mal_id);
+        if (vistos.has(anime.id)) return false;
+        vistos.add(anime.id);
         return true;
     });
 }
 
+// ==========================================
+// 0. CLIENTE ANILIST (reemplaza a Jikan/MAL)
+// ==========================================
+async function consultarAniList(query, variables = {}) {
+    const respuesta = await fetch(ANILIST_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ query, variables })
+    });
+
+    if (!respuesta.ok) throw new Error(`Error en AniList API: ${respuesta.status}`);
+
+    const json = await respuesta.json();
+    if (json.errors) throw new Error(json.errors[0]?.message || 'Error de AniList');
+    return json.data;
+}
+
+function tituloAnime(m) {
+    return m.title?.english || m.title?.romaji || 'Sin título';
+}
+
+function formatearScore(averageScore, decimales = 2) {
+    return averageScore ? (averageScore / 10).toFixed(decimales) : 'N/A';
+}
+
+function obtenerTemporadaActual() {
+    const mes = new Date().getMonth();
+    const anio = new Date().getFullYear();
+    let temporada;
+    if (mes <= 2) temporada = 'WINTER';
+    else if (mes <= 5) temporada = 'SPRING';
+    else if (mes <= 8) temporada = 'SUMMER';
+    else temporada = 'FALL';
+    return { temporada, anio };
+}
+
+// AniList no filtra "horarios por día" directamente: se deduce el día de emisión
+// (huso horario de Japón, como usan las guías de emisión) a partir de nextAiringEpisode.
+function obtenerDiaJST(timestampUnix) {
+    const fecha = new Date(timestampUnix * 1000);
+    return new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', weekday: 'long' }).format(fecha).toLowerCase();
+}
+
+function obtenerHoraJST(timestampUnix) {
+    const fecha = new Date(timestampUnix * 1000);
+    return new Intl.DateTimeFormat('es-ES', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' }).format(fecha);
+}
+
+function limpiarSinopsis(descripcionCruda) {
+    if (!descripcionCruda) return null;
+    const texto = descripcionCruda
+        .split(/\(Source:/i)[0]
+        .replace(/<br\s*\/?>/gi, ' ')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return texto || null;
+}
+
 async function traducirTexto(texto, langpair = 'en|es') {
     if (!texto) return "Sinopsis no disponible.";
-    if (translateCache[texto]) return translateCache[texto]; 
+    if (translateCache[texto]) return translateCache[texto];
+
+    // MyMemory (plan gratuito) limita ~500 caracteres por consulta
+    const textoAcortado = texto.length > 480 ? texto.slice(0, 480).replace(/\s+\S*$/, '') + '…' : texto;
 
     try {
-        const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(texto)}&langpair=${langpair}`);
-        
+        const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(textoAcortado)}&langpair=${langpair}`);
+
         // 🔧 MEJORA (Feedback Profesor): Validar que el servidor de traducción responda correctamente
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        
+
         const data = await response.json();
         if (data.responseStatus === 200 && data.responseData.translatedText) {
             const translated = data.responseData.translatedText;
-            translateCache[texto] = translated; 
+            translateCache[texto] = translated;
             return translated;
         } else {
             return `${texto} (Traducción no disponible)`;
@@ -58,18 +121,18 @@ async function traducirTexto(texto, langpair = 'en|es') {
 // 1. Navegación SPA (CON CANDADO DE SCROLL)
 function cambiarVista(idVista) {
     if(idVista !== 'vista-detalles') {
-        vistaAnterior = idVista; 
+        vistaAnterior = idVista;
         document.getElementById('detalle-fondo-cine').classList.remove('activo');
     }
 
     document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
     document.getElementById(idVista).classList.add('activa');
-    
+
     document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
         btn.classList.toggle('activo', btn.dataset.vista === idVista);
     });
 
-    document.getElementById('buscar').value = ''; 
+    document.getElementById('buscar').value = '';
     document.getElementById('lista-resultados').style.display = 'none';
 
     if (idVista === 'vista-inicio') {
@@ -94,24 +157,37 @@ function volverDeDetalles() {
 // 2. HERO DINÁMICO (PRE-CARGA INTELIGENTE)
 // ==========================================
 async function iniciarHeroRotativo() {
+    const query = `
+        query ($perPage: Int) {
+            Page(perPage: $perPage) {
+                media(type: ANIME, status: RELEASING, sort: TRENDING_DESC) {
+                    id
+                    idMal
+                    title { romaji english }
+                    coverImage { extraLarge large }
+                    averageScore
+                    genres
+                    status
+                    season
+                    seasonYear
+                    format
+                    description(asHtml: false)
+                }
+            }
+        }`;
+
     try {
-        const respuesta = await fetch('https://api.jikan.moe/v4/top/anime?filter=airing&limit=25');
-        
-        // 🔧 MEJORA: Evitar .json() si la API de Jikan está caída
-        if (!respuesta.ok) throw new Error(`Error en Jikan API (Hero): ${respuesta.status}`);
-        
-        const data = await respuesta.json();
-        const animesFiltrados = eliminarDuplicados(data.data).filter(a => a.synopsis && a.images.jpg.large_image_url);
+        const data = await consultarAniList(query, { perPage: 25 });
+        const animesFiltrados = eliminarDuplicados(data.Page.media).filter(m => m.description && (m.coverImage.extraLarge || m.coverImage.large));
         heroAnimes = barajarArray(animesFiltrados);
-        
+
         if (heroAnimes.length > 0) {
             const primerAnime = heroAnimes[0];
-            const sinopsisOriginal = primerAnime.synopsis ? primerAnime.synopsis.split('[Written by')[0].trim() : "Sinopsis no disponible.";
-            primerAnime.sinopsisTraducida = await traducirTexto(sinopsisOriginal);
+            primerAnime.sinopsisTraducida = await traducirTexto(limpiarSinopsis(primerAnime.description));
 
             actualizarUIHero();
-            if(intervaloHero) clearInterval(intervaloHero); 
-            intervaloHero = setInterval(cambiarHeroSiguiente, 8000); 
+            if(intervaloHero) clearInterval(intervaloHero);
+            intervaloHero = setInterval(cambiarHeroSiguiente, 8000);
         }
     } catch (error) {
         console.error("Error cargando Hero:", error);
@@ -121,17 +197,16 @@ async function iniciarHeroRotativo() {
 async function cambiarHeroSiguiente() {
     const siguienteIndice = (indiceHeroActual + 1) % heroAnimes.length;
     const siguienteAnime = heroAnimes[siguienteIndice];
-    
+
     if (siguienteAnime) {
         const img = new Image();
-        img.src = siguienteAnime.images.jpg.large_image_url;
-        
-        const sinopsisOriginal = siguienteAnime.synopsis ? siguienteAnime.synopsis.split('[Written by')[0].trim() : "Sinopsis no disponible.";
+        img.src = siguienteAnime.coverImage.extraLarge || siguienteAnime.coverImage.large;
+
         if (!siguienteAnime.sinopsisTraducida) {
-            siguienteAnime.sinopsisTraducida = await traducirTexto(sinopsisOriginal);
+            siguienteAnime.sinopsisTraducida = await traducirTexto(limpiarSinopsis(siguienteAnime.description));
         }
     }
-    
+
     indiceHeroActual = siguienteIndice;
     actualizarUIHero();
 }
@@ -145,19 +220,19 @@ function actualizarUIHero() {
     setTimeout(() => {
         contenedor.style.opacity = 0;
 
-        const temporada = anime.season ? `Temporada ${traduccionesTemporada[anime.season] || anime.season}` : "Actualidad";
+        const temporada = anime.season ? `Temporada ${traduccionesTemporada[anime.season.toLowerCase()] || anime.season}` : "Actualidad";
         const estado = traduccionesEstado[anime.status] || anime.status;
 
-        document.getElementById('hero-imagen').src = anime.images.jpg.large_image_url;
-        document.getElementById('hero-titulo').innerText = anime.title;
-        document.getElementById('hero-meta').innerText = `${anime.type || 'TV'} • ${anime.year || new Date().getFullYear()} • ${temporada} • ${estado}`;
-        document.getElementById('hero-rating').innerText = anime.score ? anime.score.toFixed(2) : "N/A";
+        document.getElementById('hero-imagen').src = anime.coverImage.extraLarge || anime.coverImage.large;
+        document.getElementById('hero-titulo').innerText = tituloAnime(anime);
+        document.getElementById('hero-meta').innerText = `${anime.format || 'TV'} • ${anime.seasonYear || new Date().getFullYear()} • ${temporada} • ${estado}`;
+        document.getElementById('hero-rating').innerText = formatearScore(anime.averageScore);
         document.getElementById('hero-sinopsis').innerText = anime.sinopsisTraducida || "Sinopsis no disponible.";
-        document.getElementById('btn-hero-detalles').onclick = () => abrirDetalles(anime.mal_id);
+        document.getElementById('btn-hero-detalles').onclick = () => abrirDetalles(anime.id);
 
         contenedor.style.animation = 'slide-in-right 0.4s ease-out forwards';
-        contenedor.style.opacity = 1; 
-    }, 400); 
+        contenedor.style.opacity = 1;
+    }, 400);
 }
 
 // ==========================================
@@ -171,28 +246,37 @@ async function cargarDirectorio() {
     }
     grid.innerHTML = skeletonHTML;
 
-    try {
-        const respuesta = await fetch('https://api.jikan.moe/v4/seasons/now?limit=24');
-        
-        // 🔧 MEJORA: Evitar .json() si la API está caída
-        if (!respuesta.ok) throw new Error(`Catálogo inalcanzable. Status: ${respuesta.status}`);
+    const { temporada, anio } = obtenerTemporadaActual();
+    const query = `
+        query ($temporada: MediaSeason, $anio: Int, $perPage: Int) {
+            Page(perPage: $perPage) {
+                media(type: ANIME, season: $temporada, seasonYear: $anio, sort: POPULARITY_DESC) {
+                    id
+                    idMal
+                    title { romaji english }
+                    coverImage { large }
+                    averageScore
+                }
+            }
+        }`;
 
-        const data = await respuesta.json();
-        const animesUnicos = eliminarDuplicados(data.data);
-        
+    try {
+        const data = await consultarAniList(query, { temporada, anio, perPage: 24 });
+        const animesUnicos = eliminarDuplicados(data.Page.media);
+
         grid.innerHTML = animesUnicos.map(a => `
-            <div class="tarjeta-anime" onclick="abrirDetalles(${a.mal_id})">
+            <div class="tarjeta-anime" onclick="abrirDetalles(${a.id})">
                 <div class="contenedor-portada">
-                    <img src="${a.images.jpg.image_url}" alt="${a.title}" loading="lazy">
-                    <span class="etiqueta-flotante">⭐ ${a.score ? a.score.toFixed(1) : 'N/A'}</span>
+                    <img src="${a.coverImage.large}" alt="${tituloAnime(a)}" loading="lazy">
+                    <span class="etiqueta-flotante">⭐ ${formatearScore(a.averageScore, 1)}</span>
                 </div>
-                <div class="info-externa"><p title="${a.title}">${a.title}</p></div>
+                <div class="info-externa"><p title="${tituloAnime(a)}">${tituloAnime(a)}</p></div>
             </div>
         `).join('');
         catalogoCargado = true;
-    } catch (error) { 
+    } catch (error) {
         console.error("Error en Catálogo:", error);
-        grid.innerHTML = '<p style="text-align: center; color: #ef4444;">Error de red al cargar el catálogo.</p>'; 
+        grid.innerHTML = '<p style="text-align: center; color: #ef4444;">Error de red al cargar el catálogo.</p>';
     }
 }
 
@@ -205,30 +289,39 @@ async function cargarHorario(dia, btnElement) {
 
     const grid = document.getElementById('grid-horarios');
     grid.innerHTML = `<div class="tarjeta-anime"><div class="contenedor-portada skeleton" style="aspect-ratio: 2/3;"></div></div>`;
-    
-    try {
-        const respuesta = await fetch(`https://api.jikan.moe/v4/schedules?filter=${dia}&limit=24`);
-        
-        // 🔧 MEJORA: Control de errores HTTP en Horarios
-        if (!respuesta.ok) throw new Error(`Error en la carga de horarios: ${respuesta.status}`);
 
-        const data = await respuesta.json();
-        const animesUnicos = eliminarDuplicados(data.data);
-        
+    const query = `
+        query ($perPage: Int) {
+            Page(perPage: $perPage) {
+                media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC) {
+                    id
+                    idMal
+                    title { romaji english }
+                    coverImage { large }
+                    nextAiringEpisode { airingAt episode }
+                }
+            }
+        }`;
+
+    try {
+        const data = await consultarAniList(query, { perPage: 50 });
+        const animesUnicos = eliminarDuplicados(data.Page.media)
+            .filter(m => m.nextAiringEpisode && obtenerDiaJST(m.nextAiringEpisode.airingAt) === dia);
+
         if (animesUnicos.length === 0) { grid.innerHTML = '<p style="text-align: center;">No hay emisiones programadas para este día.</p>'; return; }
 
         grid.innerHTML = animesUnicos.map(a => `
-            <div class="tarjeta-anime" onclick="abrirDetalles(${a.mal_id})">
+            <div class="tarjeta-anime" onclick="abrirDetalles(${a.id})">
                 <div class="contenedor-portada">
-                    <img src="${a.images.jpg.image_url}" alt="${a.title}" loading="lazy">
-                    <span class="etiqueta-flotante">🕘 ${a.broadcast.time || 'N/A'}</span>
+                    <img src="${a.coverImage.large}" alt="${tituloAnime(a)}" loading="lazy">
+                    <span class="etiqueta-flotante">🕘 ${obtenerHoraJST(a.nextAiringEpisode.airingAt)}</span>
                 </div>
-                <div class="info-externa"><p title="${a.title}">${a.title}</p></div>
+                <div class="info-externa"><p title="${tituloAnime(a)}">${tituloAnime(a)}</p></div>
             </div>
         `).join('');
-    } catch (error) { 
+    } catch (error) {
         console.error("Error en Horarios:", error);
-        grid.innerHTML = '<p style="text-align: center; color: #ef4444;">Error de red en horarios.</p>'; 
+        grid.innerHTML = '<p style="text-align: center; color: #ef4444;">Error de red en horarios.</p>';
     }
 }
 
@@ -245,25 +338,34 @@ document.getElementById('buscar').addEventListener('input', (e) => {
         lista.innerHTML = `<p style="padding: 10px; color: var(--acento);">Buscando...</p>`;
 
         temporizadorBusqueda = setTimeout(async () => {
-            try {
-                const respuesta = await fetch(`https://api.jikan.moe/v4/anime?q=${query}&limit=5`);
-                
-                // 🔧 MEJORA: Prevenir parseo si la búsqueda colapsa
-                if (!respuesta.ok) throw new Error('Búsqueda fallida');
+            const busquedaQuery = `
+                query ($q: String, $perPage: Int) {
+                    Page(perPage: $perPage) {
+                        media(type: ANIME, search: $q) {
+                            id
+                            idMal
+                            title { romaji english }
+                            coverImage { large }
+                            seasonYear
+                        }
+                    }
+                }`;
 
-                const data = await respuesta.json();
-                if (data.data.length === 0) { lista.innerHTML = `<p style="padding: 10px;">No hay resultados.</p>`; return; }
-                
-                lista.innerHTML = data.data.map(anime => `
-                    <div class="tarjeta-busqueda" onclick="abrirDetalles(${anime.mal_id})">
-                        <img src="${anime.images.jpg.image_url}" alt="${anime.title}" loading="lazy">
-                        <div class="tarjeta-busqueda-info"><h4>${anime.title}</h4><span>${anime.year || 'TV Anime'}</span></div>
+            try {
+                const data = await consultarAniList(busquedaQuery, { q: query, perPage: 5 });
+                const resultados = data.Page.media;
+                if (resultados.length === 0) { lista.innerHTML = `<p style="padding: 10px;">No hay resultados.</p>`; return; }
+
+                lista.innerHTML = resultados.map(anime => `
+                    <div class="tarjeta-busqueda" onclick="abrirDetalles(${anime.id})">
+                        <img src="${anime.coverImage.large}" alt="${tituloAnime(anime)}" loading="lazy">
+                        <div class="tarjeta-busqueda-info"><h4>${tituloAnime(anime)}</h4><span>${anime.seasonYear || 'TV Anime'}</span></div>
                     </div>
                 `).join('');
-            } catch (error) { 
-                lista.innerHTML = `<p style="padding: 10px; color: #ef4444;">Error en la red.</p>`; 
+            } catch (error) {
+                lista.innerHTML = `<p style="padding: 10px; color: #ef4444;">Error en la red.</p>`;
             }
-        }, 400); 
+        }, 400);
     } else { lista.style.display = 'none'; }
 });
 
@@ -271,10 +373,10 @@ document.getElementById('buscar').addEventListener('input', (e) => {
 // 6. DETALLES Y CONEXIÓN BÓVEDA
 // ==========================================
 async function abrirDetalles(idAnime) {
-    document.getElementById('lista-resultados').style.display = 'none'; 
-    document.getElementById('buscar').value = ''; 
+    document.getElementById('lista-resultados').style.display = 'none';
+    document.getElementById('buscar').value = '';
     cambiarVista('vista-detalles');
-    
+
     document.getElementById('detalle-imagen').src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
     document.getElementById('detalle-titulo').innerHTML = '<div class="skeleton" style="height: 2.2rem; width: 70%; margin-bottom: 8px;"></div>';
     document.getElementById('detalle-meta').innerHTML = '<div class="skeleton" style="height: 0.9rem; width: 90%; margin-bottom: 15px;"></div>';
@@ -283,45 +385,60 @@ async function abrirDetalles(idAnime) {
     document.getElementById('detalle-rating-valor').innerText = "-";
     document.querySelector('#vista-detalles .btn-secundario').style.display = 'none';
 
-    try {
-        const respuesta = await fetch(`https://api.jikan.moe/v4/anime/${idAnime}/full`);
-        
-        // 🔧 MEJORA: Validar Detalles
-        if (!respuesta.ok) throw new Error(`Detalles no encontrados: ${respuesta.status}`);
+    const query = `
+        query ($id: Int) {
+            Media(id: $id, type: ANIME) {
+                id
+                idMal
+                title { romaji english }
+                coverImage { extraLarge large }
+                bannerImage
+                averageScore
+                genres
+                status
+                season
+                seasonYear
+                format
+                description(asHtml: false)
+            }
+        }`;
 
-        const data = (await respuesta.json()).data;
+    try {
+        const data = await consultarAniList(query, { id: idAnime });
+        const anime = data.Media;
 
         const fondoCine = document.getElementById('detalle-fondo-cine');
-        fondoCine.style.backgroundImage = `url(${data.images.jpg.large_image_url})`;
+        fondoCine.style.backgroundImage = `url(${anime.bannerImage || anime.coverImage.extraLarge || anime.coverImage.large})`;
         fondoCine.classList.add('activo');
 
-        const sinopsisOriginal = data.synopsis ? data.synopsis.split('[Written by')[0].trim() : "Sinopsis no disponible.";
-        const sinopsisTraducida = await traducirTexto(sinopsisOriginal);
+        const sinopsisTraducida = await traducirTexto(limpiarSinopsis(anime.description));
 
-        const temporada = data.season ? `Temporada ${traduccionesTemporada[data.season] || data.season}` : "Actual";
-        const estado = traduccionesEstado[data.status] || data.status;
+        const temporada = anime.season ? `Temporada ${traduccionesTemporada[anime.season.toLowerCase()] || anime.season}` : "Actual";
+        const estado = traduccionesEstado[anime.status] || anime.status;
 
-        document.getElementById('detalle-imagen').src = data.images.jpg.large_image_url;
-        document.getElementById('detalle-titulo').innerText = data.title;
-        document.getElementById('detalle-meta').innerText = `${data.type || 'TV'} • ${data.year || 'N/A'} • ${temporada} • ${estado}`;
+        document.getElementById('detalle-imagen').src = anime.coverImage.extraLarge || anime.coverImage.large;
+        document.getElementById('detalle-titulo').innerText = tituloAnime(anime);
+        document.getElementById('detalle-meta').innerText = `${anime.format || 'TV'} • ${anime.seasonYear || 'N/A'} • ${temporada} • ${estado}`;
         document.getElementById('detalle-sinopsis').innerText = sinopsisTraducida;
-        document.getElementById('detalle-rating-valor').innerText = data.score ? data.score.toFixed(2) : "N/A";
+        document.getElementById('detalle-rating-valor').innerText = formatearScore(anime.averageScore);
 
-        if (data.genres && data.genres.length > 0) {
-            document.getElementById('detalle-tags').innerHTML = data.genres.map(g => `<span class="tag">${g.name}</span>`).join('');
+        if (anime.genres && anime.genres.length > 0) {
+            document.getElementById('detalle-tags').innerHTML = anime.genres.map(g => `<span class="tag">${g}</span>`).join('');
         } else { document.getElementById('detalle-tags').innerHTML = '<span class="tag">Sin Clasificar</span>'; }
 
         animeActualParaBoveda = {
-            mal_id: data.mal_id, title: data.title, image_url: data.images.jpg.large_image_url,
-            type: data.type, year: data.year, status: estado, score: data.score, genres: data.genres
+            mal_id: anime.id, title: tituloAnime(anime), image_url: anime.coverImage.extraLarge || anime.coverImage.large,
+            type: anime.format, year: anime.seasonYear, status: estado,
+            score: anime.averageScore ? anime.averageScore / 10 : null,
+            genres: (anime.genres || []).map(g => ({ name: g }))
         };
 
         const btnGuardar = document.querySelector('#vista-detalles .btn-secundario');
         btnGuardar.style.display = 'flex';
         btnGuardar.onclick = guardarEnBoveda;
-    } catch (error) { 
+    } catch (error) {
         console.error("Fallo al abrir detalles", error);
-        document.getElementById('detalle-titulo').innerText = "Error de Sistema. Intenta más tarde."; 
+        document.getElementById('detalle-titulo').innerText = "Error de Sistema. Intenta más tarde.";
     }
 }
 
@@ -335,7 +452,7 @@ async function guardarEnBoveda() {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(animeActualParaBoveda)
         });
-        
+
         // 🔧 MEJORA: Protegemos contra caídas 500 del servidor de Render
         if (!respuesta.ok && respuesta.status !== 400) throw new Error("Fallo en Render Backend");
 
@@ -360,7 +477,7 @@ async function eliminarDeBoveda(event, mal_id) {
 
     try {
         const respuesta = await fetch(`${API_URL}/api/eliminar/${mal_id}`, { method: 'DELETE' });
-        
+
         // 🔧 MEJORA: Validar el DELETE
         if (!respuesta.ok) throw new Error("Fallo borrando en backend");
 
@@ -383,12 +500,12 @@ async function eliminarDeBoveda(event, mal_id) {
 async function cargarBoveda() {
     const panelStats = document.getElementById('panel-estadisticas');
     const gridBoveda = document.getElementById('grid-boveda');
-    
+
     gridBoveda.innerHTML = `<div class="boveda-vacia glass-panel-dark" style="color: var(--acento);">📡 Sincronizando bóveda...</div>`;
-    
+
     try {
         const respuesta = await fetch(`${API_URL}/api/boveda`);
-        
+
         // 🔧 MEJORA: Validar que Render esté en línea antes de parsear
         if (!respuesta.ok) throw new Error("Render Backend inalcanzable");
 
@@ -418,7 +535,7 @@ async function cargarBoveda() {
             gridBoveda.innerHTML = `<div class="boveda-vacia glass-panel-dark">🛡️ Tu bóveda está vacía. ¡Ve a explorar el catálogo!</div>`;
             return;
         }
-                        
+
         // 🔧 AÑADIDO: Inyectamos el botón de Eliminar (Tacho de basura) en las tarjetas
         gridBoveda.innerHTML = animesGuardados.map(a => `
             <div class="tarjeta-anime" onclick="abrirDetalles(${a.mal_id})">
@@ -442,6 +559,10 @@ async function cargarBoveda() {
 function iniciarFondoTecnologico() {
     const canvas = document.getElementById('fondo-tecnologico');
     if (!canvas) return;
+
+    // Accesibilidad: si el usuario prefiere menos movimiento, no arrancamos la animación
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
 
@@ -452,9 +573,10 @@ function iniciarFondoTecnologico() {
     for (let x = 0; x < columns; x++) { rainDrops[x] = 1; }
 
     const draw = () => {
-        ctx.fillStyle = 'rgba(11, 15, 25, 0.05)';
+        const fondoRGB = getComputedStyle(document.documentElement).getPropertyValue('--fondo-profundo-rgb').trim() || '11, 15, 25';
+        ctx.fillStyle = `rgba(${fondoRGB}, 0.05)`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#8b5cf6'; 
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#8b5cf6';
         ctx.font = `${fontSize}px monospace`;
 
         for (let i = 0; i < rainDrops.length; i++) {
@@ -469,7 +591,7 @@ function iniciarFondoTecnologico() {
 
     window.addEventListener('resize', () => {
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        rainDrops.length = 0; 
+        rainDrops.length = 0;
         for (let x = 0; x < canvas.width / fontSize; x++) { rainDrops[x] = 1; }
     });
 }
@@ -483,6 +605,24 @@ function iniciarUtilidadesUI() {
     });
 }
 
+function aplicarTema(tema) {
+    document.documentElement.setAttribute('data-theme', tema);
+    localStorage.setItem('anisync-tema', tema);
+    const btnTema = document.getElementById('btn-tema');
+    if (btnTema) btnTema.textContent = tema === 'dark' ? '🌙' : '☀️';
+}
+
+function iniciarTema() {
+    const temaGuardado = localStorage.getItem('anisync-tema');
+    const prefiereClaro = window.matchMedia('(prefers-color-scheme: light)').matches;
+    aplicarTema(temaGuardado || (prefiereClaro ? 'light' : 'dark'));
+
+    document.getElementById('btn-tema').addEventListener('click', () => {
+        const temaActual = document.documentElement.getAttribute('data-theme') || 'dark';
+        aplicarTema(temaActual === 'dark' ? 'light' : 'dark');
+    });
+}
+
 function mostrarToast(mensaje, tipo = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -490,10 +630,11 @@ function mostrarToast(mensaje, tipo = 'info') {
     toast.className = `toast ${tipo}`;
     toast.textContent = mensaje;
     container.appendChild(toast);
-    setTimeout(() => { toast.remove(); }, 4500); 
+    setTimeout(() => { toast.remove(); }, 4500);
 }
 
 function iniciarApp() {
+    iniciarTema();
     const splashScreen = document.getElementById('splash-screen');
     const logoGrande = document.querySelector('.logo-grande');
     if (splashScreen && logoGrande) {
@@ -502,13 +643,13 @@ function iniciarApp() {
             splashScreen.classList.add('oculto');
             document.querySelector('.navbar').classList.remove('contenido-oculto');
             document.getElementById('contenedor-vistas').classList.remove('contenido-oculto');
-            
+
             cambiarVista('vista-inicio');
             iniciarHeroRotativo();
             iniciarFondoTecnologico();
             iniciarUtilidadesUI();
-            setTimeout(() => { if (splashScreen) splashScreen.remove(); }, 1500); 
-        }, { once: true }); 
+            setTimeout(() => { if (splashScreen) splashScreen.remove(); }, 1500);
+        }, { once: true });
     }
 };
 
