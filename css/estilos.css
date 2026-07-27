@@ -119,13 +119,16 @@ img { color: transparent; }
 .contenedor-portada { position: relative; }
 .contenedor-portada img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; }
 .etiqueta-flotante { position: absolute; top: 8px; right: 8px; background: rgba(11, 15, 25, 0.9); padding: 4px 10px; font-size: 0.75rem; font-weight: bold; border-radius: 20px; color: #f8fafc; border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px); }
-.etiqueta-novedad { top: 40px; background: #ef4444; color: #fff; border-color: rgba(255, 255, 255, 0.2); }
+.etiqueta-novedad { top: 40px; background: #4ade80; color: #000; border-color: rgba(0, 0, 0, 0.1); box-shadow: 0 0 12px rgba(74, 222, 128, 0.6); animation: pulso-novedad 1.8s ease-out 2; }
+@keyframes pulso-novedad { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 .info-externa { padding: 12px 15px; }
 .info-externa p { margin: 0; font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--texto); }
 
 .btn-eliminar { position: absolute; top: 8px; left: 8px; background: rgba(11, 15, 25, 0.85); color: #f8fafc; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; cursor: pointer; opacity: 0; transition: opacity 0.2s ease, background 0.2s ease; }
 .contenedor-portada:hover .btn-eliminar { opacity: 1; }
 .btn-eliminar:hover { background: #ef4444; }
+/* En pantallas táctiles no hay :hover, así que el botón de eliminar debe verse siempre */
+@media (hover: none) { .btn-eliminar { opacity: 0.85; } }
 
 .menu-dias { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 1px solid var(--borde-sutil); padding-bottom: 10px; }
 .filtro-btn { background: none; border: none; color: var(--texto-secundario); font-size: 1rem; cursor: pointer; padding: 10px 5px; position: relative; text-transform: uppercase; letter-spacing: 1px; }
@@ -296,5 +299,6 @@ img { color: transparent; }
 @media (prefers-reduced-motion: reduce) {
     #fondo-tecnologico { display: none; }
     .logo-pequeno { animation: none; }
+    .etiqueta-novedad { animation: none; }
     * { scroll-behavior: auto !important; }
 }
