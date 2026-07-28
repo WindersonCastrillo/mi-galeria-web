@@ -581,23 +581,43 @@ function iniciarFondoTecnologico() {
 
     const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
     const fontSize = 16;
-    const columns = canvas.width / fontSize;
-    const rainDrops = [];
-    for (let x = 0; x < columns; x++) { rainDrops[x] = 1; }
+    const espaciado = fontSize * 1.6; // columnas mas separadas: lluvia menos densa que antes
+
+    let rainDrops = [];
+    const crearColumnas = () => {
+        const total = Math.floor(canvas.width / espaciado);
+        rainDrops = Array.from({ length: total }, () => Math.floor(Math.random() * -40));
+    };
+    crearColumnas();
 
     const draw = () => {
         const fondoRGB = getComputedStyle(document.documentElement).getPropertyValue('--fondo-profundo-rgb').trim() || '11, 15, 25';
+        const acento = getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#8b5cf6';
+        const textoPrincipal = getComputedStyle(document.documentElement).getPropertyValue('--texto').trim() || '#f8fafc';
+
         ctx.globalAlpha = 1;
-        ctx.fillStyle = `rgba(${fondoRGB}, 0.05)`;
+        ctx.fillStyle = `rgba(${fondoRGB}, 0.06)`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.globalAlpha = 0.35;
-        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#8b5cf6';
         ctx.font = `${fontSize}px monospace`;
 
         for (let i = 0; i < rainDrops.length; i++) {
-            const text = katakana.charAt(Math.floor(Math.random() * katakana.length));
-            ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
-            if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) rainDrops[i] = 0;
+            const x = i * espaciado;
+            const y = rainDrops[i] * fontSize;
+
+            if (y > 0) {
+                // Cabeza de la gota: bien brillante, marca el frente de caída (usa el color
+                // de texto del tema para tener contraste tanto en oscuro como en claro).
+                // El resto de la cola queda a cargo del desvanecido gradual del rgba de arriba.
+                ctx.globalAlpha = 0.9;
+                ctx.fillStyle = textoPrincipal;
+                ctx.fillText(katakana.charAt(Math.floor(Math.random() * katakana.length)), x, y);
+
+                ctx.globalAlpha = 0.4;
+                ctx.fillStyle = acento;
+                ctx.fillText(katakana.charAt(Math.floor(Math.random() * katakana.length)), x, y - fontSize);
+            }
+
+            if (y > canvas.height && Math.random() > 0.975) rainDrops[i] = 0;
             rainDrops[i]++;
         }
         requestAnimationFrame(draw);
@@ -606,8 +626,7 @@ function iniciarFondoTecnologico() {
 
     window.addEventListener('resize', () => {
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        rainDrops.length = 0;
-        for (let x = 0; x < canvas.width / fontSize; x++) { rainDrops[x] = 1; }
+        crearColumnas();
     });
 }
 
