@@ -579,8 +579,10 @@ function iniciarFondoTecnologico() {
 
     const draw = () => {
         const fondoRGB = getComputedStyle(document.documentElement).getPropertyValue('--fondo-profundo-rgb').trim() || '11, 15, 25';
+        ctx.globalAlpha = 1;
         ctx.fillStyle = `rgba(${fondoRGB}, 0.05)`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 0.35;
         ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#8b5cf6';
         ctx.font = `${fontSize}px monospace`;
 
