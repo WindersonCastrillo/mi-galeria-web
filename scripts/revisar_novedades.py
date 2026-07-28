@@ -114,7 +114,7 @@ def actualizar_episodio(mal_id, ultimo_episodio_visto, tiene_novedad):
 def main():
     try:
         boveda = obtener_boveda()
-    except (urllib.error.URLError, urllib.error.HTTPError) as error:
+    except OSError as error:
         print(f"ERROR | No se pudo leer la Bóveda: {error}")
         return
 
@@ -127,7 +127,7 @@ def main():
 
     try:
         info_anilist = consultar_anilist_batch(ids)
-    except (urllib.error.URLError, urllib.error.HTTPError) as error:
+    except OSError as error:
         print(f"ERROR | No se pudo consultar AniList: {error}")
         return
 
@@ -153,7 +153,7 @@ def main():
             if disponibles > ultimo_visto:
                 actualizar_episodio(mal_id, disponibles, True)
                 print(f"NOVEDAD | {anime.get('title', mal_id)} | episodio {disponibles}")
-        except (urllib.error.URLError, urllib.error.HTTPError) as error:
+        except OSError as error:
             print(f"ERROR | No se pudo actualizar {anime.get('title', mal_id)}: {error}")
             continue
 
