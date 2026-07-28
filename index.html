@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AniSync Toshokan</title>
-    <link rel="stylesheet" href="css/estilos.css?v=5">
+    <link rel="stylesheet" href="css/estilos.css?v=6">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -38,22 +38,24 @@
         <section id="vista-inicio" class="vista activa">
             <div class="tarjeta-inmersiva" id="hero-contenedor">
                 <div id="hero-fondo-blur" class="hero-fondo-blur" aria-hidden="true"></div>
-                <img id="hero-imagen" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Portada Anime" class="portada-inmersiva">
-                <div class="info-inmersiva">
-                    <h2 id="hero-titulo" class="titulo-inmersivo">Cargando Cartelera...</h2>
-                    <p id="hero-meta" class="meta-inmersiva">Conectando a los servidores</p>
-                    <div id="hero-tags" class="tags-inmersivos">
-                        <span class="tag">Procesando</span>
-                    </div>
-                    <p id="hero-sinopsis" class="sinopsis-inmersiva">Buscando los animes más populares de esta temporada para ti...</p>
-                    
-                    <div class="acciones-inmersivas">
-                        <div class="rating-box">
-                            <span class="estrella">⭐</span>
-                            <span id="hero-rating" class="puntaje">0.0</span>
-                            <span class="votos">MAL RATING</span>
+                <div class="hero-panel">
+                    <img id="hero-imagen" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Portada Anime" class="portada-inmersiva">
+                    <div class="info-inmersiva">
+                        <h2 id="hero-titulo" class="titulo-inmersivo">Cargando Cartelera...</h2>
+                        <p id="hero-meta" class="meta-inmersiva">Conectando a los servidores</p>
+                        <div id="hero-tags" class="tags-inmersivos">
+                            <span class="tag">Procesando</span>
                         </div>
-                        <button id="btn-hero-detalles" class="btn-principal">Ver Detalles</button>
+                        <p id="hero-sinopsis" class="sinopsis-inmersiva">Buscando los animes más populares de esta temporada para ti...</p>
+
+                        <div class="acciones-inmersivas">
+                            <div class="rating-box">
+                                <span class="estrella">⭐</span>
+                                <span id="hero-rating" class="puntaje">0.0</span>
+                                <span class="votos">MAL RATING</span>
+                            </div>
+                            <button id="btn-hero-detalles" class="btn-principal">Ver Detalles</button>
+                        </div>
                     </div>
                 </div>
             </div>

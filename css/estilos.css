@@ -112,14 +112,14 @@ img { color: transparent; }
 
 /* Hero cinematográfico de Inicio (escritorio): fondo ambiental desenfocado
    a pantalla completa (disimula el escalado del poster de AniList, que es
-   una imagen pequeña pensada para tarjetas) + el poster nítido a un lado,
-   nunca agrandado más allá de su resolución real. Evita el espacio vacío
-   que dejaba la tarjeta chica sin sacrificar calidad de imagen. */
+   una imagen pequeña pensada para tarjetas) + un panel centrado que agrupa
+   poster y texto como una sola unidad, con márgenes simétricos a los lados
+   en vez de quedar cada uno pegado a un borde opuesto. */
 @media (min-width: 821px) {
     #vista-inicio { padding: 0; min-height: 100vh; }
 
     #vista-inicio .tarjeta-inmersiva {
-        position: relative; display: flex;
+        position: relative; display: flex; align-items: center; justify-content: center;
         width: 100%; max-width: 100%; height: 100vh;
         margin: 0; padding: 0; border: none; border-radius: 0;
         background: var(--fondo-profundo); overflow: hidden;
@@ -128,37 +128,42 @@ img { color: transparent; }
     #vista-inicio .hero-fondo-blur {
         position: absolute; inset: 0;
         background-size: cover; background-position: center 25%;
-        filter: blur(50px) brightness(0.55) saturate(1.15);
+        filter: blur(50px) brightness(0.5) saturate(1.15);
         transform: scale(1.15);
-    }
-
-    #vista-inicio .portada-inmersiva {
-        position: absolute; z-index: 1;
-        top: 50%; right: 6%; transform: translateY(-50%);
-        width: min(320px, 26vw); height: auto; aspect-ratio: 2 / 3;
-        object-fit: cover; object-position: center 15%;
-        border-radius: 16px; box-shadow: 0 30px 70px rgba(0,0,0,0.55);
-        border: 1px solid rgba(255,255,255,0.1);
     }
 
     #vista-inicio .tarjeta-inmersiva::after {
         content: '';
         position: absolute; inset: 0;
-        background:
-            linear-gradient(to top, rgba(var(--fondo-profundo-rgb), 0.95) 0%, rgba(var(--fondo-profundo-rgb), 0.55) 30%, rgba(var(--fondo-profundo-rgb), 0.05) 58%, transparent 100%),
-            linear-gradient(to right, rgba(var(--fondo-profundo-rgb), 0.7) 0%, rgba(var(--fondo-profundo-rgb), 0.15) 40%, transparent 62%);
+        background: radial-gradient(ellipse 70% 70% at center, rgba(var(--fondo-profundo-rgb), 0.1) 0%, rgba(var(--fondo-profundo-rgb), 0.65) 100%);
         pointer-events: none;
     }
 
-    #vista-inicio .info-inmersiva {
+    #vista-inicio .hero-panel {
         position: relative; z-index: 2;
-        max-width: min(620px, 50vw);
-        padding: 0 60px 70px 60px;
-        margin-top: auto;
+        display: flex; align-items: center; gap: 45px;
+        max-width: min(980px, 88vw);
+        padding: 45px 55px;
+        background: var(--fondo-tarjetas);
+        border: 1px solid var(--borde-sutil);
+        border-radius: 20px;
+        box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+        backdrop-filter: blur(20px);
     }
 
-    #vista-inicio .titulo-inmersivo { font-size: 3rem; text-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-    #vista-inicio .sinopsis-inmersiva { -webkit-line-clamp: 3; }
+    #vista-inicio .portada-inmersiva {
+        position: static; flex-shrink: 0;
+        width: min(260px, 22vw); height: auto; aspect-ratio: 2 / 3;
+        object-fit: cover; object-position: center 15%;
+        border-radius: 14px; box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+    }
+
+    #vista-inicio .info-inmersiva {
+        position: static; max-width: none; padding: 0; margin: 0;
+    }
+
+    #vista-inicio .titulo-inmersivo { font-size: 2.3rem; }
+    #vista-inicio .sinopsis-inmersiva { -webkit-line-clamp: 4; }
 }
 
 /* Grid del Catálogo */
