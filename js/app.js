@@ -574,70 +574,6 @@ async function cargarBoveda() {
     }
 }
 
-// ==========================================
-// 7. FONDO TECNOLÓGICO ANIMADO
-// ==========================================
-function iniciarFondoTecnologico() {
-    const canvas = document.getElementById('fondo-tecnologico');
-    if (!canvas) return;
-
-    // Accesibilidad: si el usuario prefiere menos movimiento, no arrancamos la animación
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-
-    const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
-    const fontSize = 16;
-    const espaciado = fontSize * 1.6; // columnas mas separadas: lluvia menos densa que antes
-
-    let rainDrops = [];
-    const crearColumnas = () => {
-        const total = Math.floor(canvas.width / espaciado);
-        rainDrops = Array.from({ length: total }, () => Math.floor(Math.random() * -40));
-    };
-    crearColumnas();
-
-    const draw = () => {
-        const fondoRGB = getComputedStyle(document.documentElement).getPropertyValue('--fondo-profundo-rgb').trim() || '11, 15, 25';
-        const acento = getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#8b5cf6';
-        const textoPrincipal = getComputedStyle(document.documentElement).getPropertyValue('--texto').trim() || '#f8fafc';
-
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = `rgba(${fondoRGB}, 0.06)`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.font = `${fontSize}px monospace`;
-
-        for (let i = 0; i < rainDrops.length; i++) {
-            const x = i * espaciado;
-            const y = rainDrops[i] * fontSize;
-
-            if (y > 0) {
-                // Cabeza de la gota: bien brillante, marca el frente de caída (usa el color
-                // de texto del tema para tener contraste tanto en oscuro como en claro).
-                // El resto de la cola queda a cargo del desvanecido gradual del rgba de arriba.
-                ctx.globalAlpha = 0.9;
-                ctx.fillStyle = textoPrincipal;
-                ctx.fillText(katakana.charAt(Math.floor(Math.random() * katakana.length)), x, y);
-
-                ctx.globalAlpha = 0.4;
-                ctx.fillStyle = acento;
-                ctx.fillText(katakana.charAt(Math.floor(Math.random() * katakana.length)), x, y - fontSize);
-            }
-
-            if (y > canvas.height && Math.random() > 0.975) rainDrops[i] = 0;
-            rainDrops[i]++;
-        }
-        requestAnimationFrame(draw);
-    };
-    draw();
-
-    window.addEventListener('resize', () => {
-        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        crearColumnas();
-    });
-}
-
 function iniciarUtilidadesUI() {
     const btnScroll = document.getElementById('btn-scroll-top');
     window.addEventListener('scroll', () => { btnScroll.classList.toggle('visible', window.scrollY > 400); });
@@ -688,7 +624,6 @@ function iniciarApp() {
 
             cambiarVista('vista-inicio');
             iniciarHeroRotativo();
-            iniciarFondoTecnologico();
             iniciarUtilidadesUI();
             setTimeout(() => { if (splashScreen) splashScreen.remove(); }, 1500);
         }, { once: true });
