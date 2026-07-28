@@ -5,6 +5,7 @@ let temporizadorBusqueda;
 let vistaAnterior = 'vista-inicio';
 let catalogoCargado = false;
 let horariosCargados = false;
+let horariosAnimesCache = null;
 let animeActualParaBoveda = {};
 
 let heroAnimes = [];
@@ -276,7 +277,7 @@ async function cargarDirectorio() {
             <div class="tarjeta-anime" onclick="abrirDetalles(${a.id})">
                 <div class="contenedor-portada">
                     <img src="${a.coverImage.large}" alt="${tituloAnime(a)}" loading="lazy">
-                    <span class="etiqueta-flotante">⭐ ${formatearScore(a.averageScore, 1)}</span>
+                    <span class="etiqueta-flotante">${a.averageScore ? `⭐ ${formatearScore(a.averageScore, 1)}` : 'Sin puntuar'}</span>
                 </div>
                 <div class="info-externa"><p title="${tituloAnime(a)}">${tituloAnime(a)}</p></div>
             </div>
@@ -296,29 +297,35 @@ async function cargarHorario(dia, btnElement) {
     btnElement.classList.add('activo');
 
     const grid = document.getElementById('grid-horarios');
-    grid.innerHTML = `<div class="tarjeta-anime"><div class="contenedor-portada skeleton" style="aspect-ratio: 2/3;"></div></div>`;
-
-    const query = `
-        query ($perPage: Int) {
-            Page(perPage: $perPage) {
-                media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC) {
-                    id
-                    idMal
-                    title { romaji english }
-                    coverImage { large }
-                    nextAiringEpisode { airingAt episode }
-                }
-            }
-        }`;
 
     try {
-        const data = await consultarAniList(query, { perPage: 50 });
-        const animesUnicos = eliminarDuplicados(data.Page.media)
-            .filter(m => m.nextAiringEpisode && obtenerDiaJST(m.nextAiringEpisode.airingAt) === dia);
+        // La semana completa se pide una sola vez y se cachea; cambiar de día
+        // después solo filtra en memoria, sin volver a golpear la API.
+        if (!horariosAnimesCache) {
+            grid.innerHTML = `<div class="tarjeta-anime"><div class="contenedor-portada skeleton" style="aspect-ratio: 2/3;"></div></div>`;
 
-        if (animesUnicos.length === 0) { grid.innerHTML = '<p style="text-align: center;">No hay emisiones programadas para este día.</p>'; return; }
+            const query = `
+                query ($perPage: Int) {
+                    Page(perPage: $perPage) {
+                        media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC) {
+                            id
+                            idMal
+                            title { romaji english }
+                            coverImage { large }
+                            nextAiringEpisode { airingAt episode }
+                        }
+                    }
+                }`;
 
-        grid.innerHTML = animesUnicos.map(a => `
+            const data = await consultarAniList(query, { perPage: 50 });
+            horariosAnimesCache = eliminarDuplicados(data.Page.media);
+        }
+
+        const animesDelDia = horariosAnimesCache.filter(m => m.nextAiringEpisode && obtenerDiaJST(m.nextAiringEpisode.airingAt) === dia);
+
+        if (animesDelDia.length === 0) { grid.innerHTML = '<p style="text-align: center;">No hay emisiones programadas para este día.</p>'; return; }
+
+        grid.innerHTML = animesDelDia.map(a => `
             <div class="tarjeta-anime" onclick="abrirDetalles(${a.id})">
                 <div class="contenedor-portada">
                     <img src="${a.coverImage.large}" alt="${tituloAnime(a)}" loading="lazy">
@@ -329,6 +336,7 @@ async function cargarHorario(dia, btnElement) {
         `).join('');
     } catch (error) {
         console.error("Error en Horarios:", error);
+        horariosAnimesCache = null;
         grid.innerHTML = '<p style="text-align: center; color: #ef4444;">Error de red en horarios.</p>';
     }
 }

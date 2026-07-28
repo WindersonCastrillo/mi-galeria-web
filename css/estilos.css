@@ -167,7 +167,7 @@ img { color: transparent; }
 }
 
 /* Grid del Catálogo */
-.titulo-pagina { font-size: 2rem; margin-bottom: 30px; text-align: center; font-weight: 800; text-shadow: 0 0 8px rgba(255, 255, 255, 0.5); }
+.titulo-pagina { font-size: 2rem; margin-bottom: 30px; text-align: center; font-weight: 800; text-shadow: 0 0 8px currentColor; }
 .titulo-pagina span { color: var(--acento); text-shadow: 0 0 10px var(--acento), 0 0 20px var(--acento-hover); }
 .grid-catalogo { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
 .tarjeta-anime { background: var(--fondo-tarjetas); border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease; display: flex; flex-direction: column; border: 1px solid var(--borde-sutil); }
