@@ -165,6 +165,7 @@ async function iniciarHeroRotativo() {
                     idMal
                     title { romaji english }
                     coverImage { extraLarge large }
+                    bannerImage
                     averageScore
                     genres
                     status
@@ -202,6 +203,9 @@ async function cambiarHeroSiguiente() {
         const img = new Image();
         img.src = siguienteAnime.coverImage.extraLarge || siguienteAnime.coverImage.large;
 
+        const imgFondo = new Image();
+        imgFondo.src = siguienteAnime.bannerImage || siguienteAnime.coverImage.extraLarge || siguienteAnime.coverImage.large;
+
         if (!siguienteAnime.sinopsisTraducida) {
             siguienteAnime.sinopsisTraducida = await traducirTexto(limpiarSinopsis(siguienteAnime.description));
         }
@@ -224,6 +228,10 @@ function actualizarUIHero() {
         const estado = traduccionesEstado[anime.status] || anime.status;
 
         document.getElementById('hero-imagen').src = anime.coverImage.extraLarge || anime.coverImage.large;
+        const fondoDesenfocado = document.getElementById('hero-fondo-blur');
+        if (fondoDesenfocado) {
+            fondoDesenfocado.style.backgroundImage = `url(${anime.bannerImage || anime.coverImage.extraLarge || anime.coverImage.large})`;
+        }
         document.getElementById('hero-titulo').innerText = tituloAnime(anime);
         document.getElementById('hero-meta').innerText = `${anime.format || 'TV'} • ${anime.seasonYear || new Date().getFullYear()} • ${temporada} • ${estado}`;
         document.getElementById('hero-rating').innerText = formatearScore(anime.averageScore);

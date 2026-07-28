@@ -110,9 +110,11 @@ img { color: transparent; }
 .btn-secundario { background-color: var(--superficie); color: var(--texto); border: 1px solid var(--borde-sutil); padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: background-color 0.3s ease; }
 .btn-secundario:hover { background-color: var(--superficie-fuerte); }
 
-/* Hero cinematográfico de Inicio (escritorio): la portada pasa a ser
-   un fondo full-bleed con degradado, en vez de una tarjeta contenida,
-   para evitar el espacio vacío que dejaba la tarjeta chica en pantallas anchas. */
+/* Hero cinematográfico de Inicio (escritorio): fondo ambiental desenfocado
+   a pantalla completa (disimula el escalado del poster de AniList, que es
+   una imagen pequeña pensada para tarjetas) + el poster nítido a un lado,
+   nunca agrandado más allá de su resolución real. Evita el espacio vacío
+   que dejaba la tarjeta chica sin sacrificar calidad de imagen. */
 @media (min-width: 821px) {
     #vista-inicio { padding: 0; min-height: 100vh; }
 
@@ -120,28 +122,37 @@ img { color: transparent; }
         position: relative; display: flex;
         width: 100%; max-width: 100%; height: 100vh;
         margin: 0; padding: 0; border: none; border-radius: 0;
-        background: none; overflow: hidden;
+        background: var(--fondo-profundo); overflow: hidden;
+    }
+
+    #vista-inicio .hero-fondo-blur {
+        position: absolute; inset: 0;
+        background-size: cover; background-position: center 25%;
+        filter: blur(50px) brightness(0.55) saturate(1.15);
+        transform: scale(1.15);
     }
 
     #vista-inicio .portada-inmersiva {
-        position: absolute; inset: 0;
-        width: 100%; height: 100%;
-        object-position: center 20%;
-        border-radius: 0; box-shadow: none;
+        position: absolute; z-index: 1;
+        top: 50%; right: 6%; transform: translateY(-50%);
+        width: min(320px, 26vw); height: auto; aspect-ratio: 2 / 3;
+        object-fit: cover; object-position: center 15%;
+        border-radius: 16px; box-shadow: 0 30px 70px rgba(0,0,0,0.55);
+        border: 1px solid rgba(255,255,255,0.1);
     }
 
     #vista-inicio .tarjeta-inmersiva::after {
         content: '';
         position: absolute; inset: 0;
         background:
-            linear-gradient(to top, rgba(var(--fondo-profundo-rgb), 0.97) 0%, rgba(var(--fondo-profundo-rgb), 0.6) 30%, rgba(var(--fondo-profundo-rgb), 0.05) 58%, transparent 100%),
-            linear-gradient(to right, rgba(var(--fondo-profundo-rgb), 0.85) 0%, rgba(var(--fondo-profundo-rgb), 0.25) 45%, transparent 75%);
+            linear-gradient(to top, rgba(var(--fondo-profundo-rgb), 0.95) 0%, rgba(var(--fondo-profundo-rgb), 0.55) 30%, rgba(var(--fondo-profundo-rgb), 0.05) 58%, transparent 100%),
+            linear-gradient(to right, rgba(var(--fondo-profundo-rgb), 0.7) 0%, rgba(var(--fondo-profundo-rgb), 0.15) 40%, transparent 62%);
         pointer-events: none;
     }
 
     #vista-inicio .info-inmersiva {
         position: relative; z-index: 2;
-        max-width: 680px;
+        max-width: min(620px, 50vw);
         padding: 0 60px 70px 60px;
         margin-top: auto;
     }
